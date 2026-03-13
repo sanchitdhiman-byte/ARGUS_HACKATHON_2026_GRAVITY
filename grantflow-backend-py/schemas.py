@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional, List, Dict, Any
 from models import RoleEnum, ApplicationStatusEnum
 from datetime import datetime
 
@@ -18,29 +18,33 @@ class UserResponse(UserBase):
     class Config:
         from_attributes = True
 
-class ApplicationBase(BaseModel):
-    programme: str
-    title: str
-    duration_months: int
-    state_region: str
-    problem_stmt: str
-    solution: str
-    requested_amount: float
-    beneficiary_count: int
+# We want to match the frontend's JSON Payload structure as best as possible
+class ApplicationCreate(BaseModel):
+    grantType: str
+    formData: Dict[str, Any]
 
-class ApplicationCreate(ApplicationBase):
-    pass
-
-class ApplicationResponse(ApplicationBase):
+class ApplicationResponse(BaseModel):
     id: int
     reference_id: str
     applicant_id: int
     status: ApplicationStatusEnum
-    submitted_date: datetime
-    ai_score_alignment: int
-    ai_score_feasibility: int
-    ai_score_impact: int
+    grant_type: str
+    org_name: str
+    requested_amount: float
+    submitted_at: datetime
+    ai_score: int
     ai_summary: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class ApplicationDetailResponse(ApplicationResponse):
+    # Expand to all fields for the detailed view
+    reg_number: Optional[str] = None
+    entity_type: Optional[str] = None
+    project_title: Optional[str] = None
+    problem_statement: Optional[str] = None
+    proposed_solution: Optional[str] = None
     
     class Config:
         from_attributes = True
@@ -50,6 +54,8 @@ class ReviewCreate(BaseModel):
     score_alignment: int
     score_feasibility: int
     score_impact: int
+    score_budget: Optional[int] = 0
+    score_track_record: Optional[int] = 0
     comments: str
 
 class ReviewResponse(ReviewCreate):

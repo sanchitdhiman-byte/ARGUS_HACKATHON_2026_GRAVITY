@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 /* Global resets — Tailwind loaded via CDN in index.html */
 *, *::before, *::after {
   box-sizing: border-box;

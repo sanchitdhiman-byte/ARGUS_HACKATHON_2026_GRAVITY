@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Text, Enum, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Float, Text, Enum, ForeignKey, DateTime, Boolean
 from database import Base
 import enum
 from datetime import datetime
@@ -13,9 +13,13 @@ class RoleEnum(str, enum.Enum):
 class ApplicationStatusEnum(str, enum.Enum):
     draft = "draft"
     screening = "screening"
+    pending_review = "pending_review"
+    assigned = "assigned"
     under_review = "under_review"
+    reviewed = "reviewed"
     risk_flagged = "risk_flagged"
     approved = "approved"
+    rejected = "rejected"
     active_reporting = "active_reporting"
     closed = "closed"
 
@@ -33,19 +37,60 @@ class Application(Base):
     id = Column(Integer, primary_key=True, index=True)
     reference_id = Column(String, unique=True, index=True)
     applicant_id = Column(Integer, ForeignKey("users.id"))
-    programme = Column(String)
-    title = Column(String)
-    duration_months = Column(Integer)
+    grant_type = Column(String) # CDG, EIG, ECAG
+    
+    # Org
+    org_name = Column(String)
+    reg_number = Column(String)
+    entity_type = Column(String)
+    established_year = Column(Integer, nullable=True)
+    org_budget = Column(Float, nullable=True)
+    contact_name = Column(String)
+    contact_role = Column(String)
+    contact_email = Column(String)
+    contact_phone = Column(String)
+    address = Column(String)
+    city = Column(String)
     state_region = Column(String)
-    problem_stmt = Column(Text)
-    solution = Column(Text)
-    requested_amount = Column(Float)
-    beneficiary_count = Column(Integer)
+    postal_code = Column(String)
+
+    # Project
+    project_title = Column(String)
+    project_location = Column(String)
+    target_beneficiaries = Column(Integer, nullable=True)
+    problem_statement = Column(Text)
+    proposed_solution = Column(Text)
+    sustainability_plan = Column(Text, nullable=True)
+    schools_targeted = Column(Integer, nullable=True)
+    grade_coverage = Column(String, nullable=True)
+
+    # Budget
+    total_requested = Column(Float)
+    budget_personnel = Column(Float, nullable=True)
+    budget_equipment = Column(Float, nullable=True)
+    budget_travel = Column(Float, nullable=True)
+    budget_overheads = Column(Float, nullable=True)
+    budget_other = Column(Float, nullable=True)
+    budget_justification = Column(Text, nullable=True)
+
+    # Experience
+    prior_projects = Column(Text, nullable=True) # JSON string
+    has_previous_grants = Column(Boolean, default=False)
+    prior_funder = Column(String, nullable=True)
+    prior_amount = Column(Float, nullable=True)
+    signatory_name = Column(String, nullable=True)
+    designation = Column(String, nullable=True)
+    submission_date = Column(String, nullable=True)
+    declared = Column(Boolean, default=False)
+
     status = Column(Enum(ApplicationStatusEnum), default=ApplicationStatusEnum.screening)
-    submitted_date = Column(DateTime, default=datetime.utcnow)
+    submitted_at = Column(DateTime, default=datetime.utcnow)
+    
+    # AI Scoring
     ai_score_alignment = Column(Integer, default=0)
     ai_score_feasibility = Column(Integer, default=0)
     ai_score_impact = Column(Integer, default=0)
+    ai_score = Column(Integer, default=0)
     ai_summary = Column(Text, nullable=True)
 
 class Review(Base):
@@ -53,8 +98,32 @@ class Review(Base):
     id = Column(Integer, primary_key=True, index=True)
     application_id = Column(Integer, ForeignKey("applications.id"))
     reviewer_id = Column(Integer, ForeignKey("users.id"))
-    score_alignment = Column(Integer)
-    score_feasibility = Column(Integer)
-    score_impact = Column(Integer)
+    score_alignment = Column(Integer, nullable=True)
+    score_feasibility = Column(Integer, nullable=True)
+    score_impact = Column(Integer, nullable=True)
+    score_budget = Column(Integer, nullable=True)
+    score_track_record = Column(Integer, nullable=True)
+    total_score = Column(Integer, nullable=True)
     comments = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class ComplianceReport(Base):
+    __tablename__ = "compliance_reports"
+    id = Column(Integer, primary_key=True, index=True)
+    application_id = Column(Integer, ForeignKey("applications.id"))
+    report_type = Column(String) # UC, Narrative
+    due_date = Column(DateTime)
+    submitted_date = Column(DateTime, nullable=True)
+    status = Column(String, default="Pending") # Pending, Submitted, Verified
+    comments = Column(Text, nullable=True)
+    file_path = Column(String, nullable=True)
+
+class Disbursement(Base):
+    __tablename__ = "disbursements"
+    id = Column(Integer, primary_key=True, index=True)
+    application_id = Column(Integer, ForeignKey("applications.id"))
+    amount = Column(Float)
+    tranche_name = Column(String)
+    scheduled_date = Column(DateTime, nullable=True)
+    disbursed_date = Column(DateTime, nullable=True)
+    status = Column(String, default="Pending") # Pending, Processing, Disbursed
