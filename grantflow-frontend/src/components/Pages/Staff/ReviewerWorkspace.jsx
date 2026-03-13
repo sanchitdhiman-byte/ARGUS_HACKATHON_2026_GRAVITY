@@ -1,16 +1,89 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GlobalHeader from '../../Core/shared/GlobalHeader';
 import GlobalFooter from '../../Core/shared/GlobalFooter';
-
-const MOCK_ASSIGNMENTS = [
-  { id: 'APP-EIG-2024-0045', org: 'Tech for All Ed', grantType: 'EIG', dueDate: 'Nov 01, 2024', status: 'Pending Review', amount: 1200000, score: null },
-  { id: 'APP-CDG-2024-0105', org: 'Village Upliftment Society', grantType: 'CDG', dueDate: 'Nov 05, 2024', status: 'Pending Review', amount: 350000, score: null },
-  { id: 'APP-ECAG-2024-0012', org: 'Clean Rivers NGO', grantType: 'ECAG', dueDate: 'Oct 28, 2024', status: 'Reviewed', amount: 150000, score: 85 },
-];
+import { reviewsAPI, applicationsAPI } from '../../../services/api';
 
 const ReviewerWorkspace = ({ onNavigate, isLoggedIn, onLogout, user }) => {
   const [filterStatus, setFilterStatus] = useState('All');
   const [selectedApp, setSelectedApp] = useState(null);
+  const [assignments, setAssignments] = useState([]);
+  const [reviewPackage, setReviewPackage] = useState(null);
+  const [scores, setScores] = useState({});
+  const [comments, setComments] = useState('');
+  const [submitLoading, setSubmitLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const res = await reviewsAPI.list();
+        const mapped = await Promise.all(res.data.map(async (review) => {
+          let appData = {};
+          try {
+            const appRes = await applicationsAPI.getById(review.application_id);
+            appData = appRes.data;
+          } catch { /* empty */ }
+          return {
+            id: appData.reference_id || `APP-${review.application_id}`,
+            dbId: review.application_id,
+            reviewId: review.id,
+            org: appData.org_name || 'Unknown',
+            grantType: appData.grant_type || '',
+            dueDate: '',
+            status: review.status === 'submitted' ? 'Reviewed' : 'Pending Review',
+            amount: appData.total_requested || 0,
+            score: review.total_score,
+          };
+        }));
+        setAssignments(mapped);
+      } catch { /* empty */ }
+    };
+    fetchReviews();
+  }, []);
+
+  const handleOpenReview = async (app) => {
+    setSelectedApp(app);
+    setScores({});
+    setComments('');
+    try {
+      const res = await reviewsAPI.getReviewPackage(app.dbId);
+      setReviewPackage(res.data);
+      // Pre-fill with AI suggested scores
+      const suggested = res.data?.ai_review_package?.suggested_scores || {};
+      setScores({
+        alignment: suggested.alignment?.score || '',
+        feasibility: suggested.feasibility?.score || '',
+        impact: suggested.impact?.score || '',
+        budget: suggested.budget?.score || '',
+        track_record: suggested.track_record?.score || '',
+      });
+    } catch {
+      setReviewPackage(null);
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    if (!selectedApp) return;
+    setSubmitLoading(true);
+    try {
+      await reviewsAPI.submit({
+        application_id: selectedApp.dbId,
+        score_alignment: parseInt(scores.alignment) || 0,
+        score_feasibility: parseInt(scores.feasibility) || 0,
+        score_impact: parseInt(scores.impact) || 0,
+        score_budget: parseInt(scores.budget) || 0,
+        score_track_record: parseInt(scores.track_record) || 0,
+        comments,
+      });
+      setAssignments(prev => prev.map(a => a.dbId === selectedApp.dbId ? { ...a, status: 'Reviewed', score: Object.values(scores).reduce((s, v) => s + (parseInt(v) || 0), 0) } : a));
+      setSelectedApp(null);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Submit failed');
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  const MOCK_ASSIGNMENTS = assignments;
 
   const filteredApps = MOCK_ASSIGNMENTS.filter(app => {
     let match = true;
@@ -26,7 +99,7 @@ const ReviewerWorkspace = ({ onNavigate, isLoggedIn, onLogout, user }) => {
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-background-dark font-display flex flex-col selection:bg-primary/30">
-      <GlobalHeader currentView="reviewer-workspace" onNavigate={onNavigate} isLoggedIn={isLoggedIn} onLogout={onLogout} />
+      <GlobalHeader currentView="reviewer-workspace" onNavigate={onNavigate} isLoggedIn={isLoggedIn} onLogout={onLogout} user={user} />
       
       <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
@@ -122,8 +195,8 @@ const ReviewerWorkspace = ({ onNavigate, isLoggedIn, onLogout, user }) => {
                        </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button 
-                        onClick={() => setSelectedApp(app)}
+                      <button
+                        onClick={() => handleOpenReview(app)}
                         className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors group-hover:opacity-100 opacity-0 md:opacity-100 focus:opacity-100"
                         title={app.status === 'Reviewed' ? 'View Evaluation' : 'Evaluate'}
                       >
@@ -164,67 +237,99 @@ const ReviewerWorkspace = ({ onNavigate, isLoggedIn, onLogout, user }) => {
             </div>
 
             <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-               {/* Left: App Data */}
+               {/* Left: App Data + AI Review Package */}
                <div className="space-y-6">
-                 <h4 className="text-sm font-black uppercase tracking-widest text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-2">Application Data Snapshot</h4>
-                 
-                 <div className="space-y-4">
-                   <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                     <p className="text-[10px] font-bold uppercase text-slate-500 mb-1">Project Summary</p>
-                     <p className="text-sm text-slate-700 dark:text-slate-300">Detailed intervention plan addressing education gaps using digital smart classrooms...</p>
-                   </div>
-                   
-                   <div className="grid grid-cols-2 gap-4">
-                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                       <p className="text-[10px] font-bold uppercase text-slate-500 mb-1">Target</p>
-                       <p className="text-sm font-bold text-slate-900 dark:text-white">5,000 Students</p>
-                     </div>
-                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                       <p className="text-[10px] font-bold uppercase text-slate-500 mb-1">Budget</p>
-                       <p className="text-sm font-bold text-slate-900 dark:text-white">₹{(selectedApp.amount/100000).toFixed(1)} Lakhs</p>
-                     </div>
-                   </div>
+                 <h4 className="text-sm font-black uppercase tracking-widest text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-2">AI Review Package</h4>
 
-                   <button className="w-full py-4 bg-slate-100 dark:bg-slate-800 rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition flex justify-center items-center gap-2 border border-slate-200 dark:border-slate-700">
-                      <span className="material-symbols-outlined !text-lg text-primary">download</span>
-                      Download Full PDF Application
-                   </button>
+                 {reviewPackage?.ai_review_package?.summary && (
+                   <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 p-4 rounded-xl">
+                     <p className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 mb-2 flex items-center gap-1">
+                       <span className="material-symbols-outlined !text-sm">smart_toy</span> AI Summary
+                     </p>
+                     <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
+                       <p><strong>Applicant:</strong> {reviewPackage.ai_review_package.summary.applicant}</p>
+                       <p><strong>Project:</strong> {reviewPackage.ai_review_package.summary.project}</p>
+                       <p><strong>Location:</strong> {reviewPackage.ai_review_package.summary.location}</p>
+                       <p><strong>Beneficiaries:</strong> {reviewPackage.ai_review_package.summary.beneficiaries}</p>
+                       <p><strong>Amount:</strong> {reviewPackage.ai_review_package.summary.amount}</p>
+                     </div>
+                   </div>
+                 )}
+
+                 {reviewPackage?.ai_review_package?.risk_flags?.length > 0 && (
+                   <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 p-4 rounded-xl">
+                     <p className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1">
+                       <span className="material-symbols-outlined !text-sm">warning</span> Risk Flags
+                     </p>
+                     <div className="space-y-2">
+                       {reviewPackage.ai_review_package.risk_flags.map((flag, i) => (
+                         <div key={i} className="flex items-start gap-2">
+                           <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${flag.severity === 'high' ? 'bg-red-100 text-red-700' : flag.severity === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{flag.severity}</span>
+                           <p className="text-xs text-slate-700 dark:text-slate-300">{flag.description}</p>
+                         </div>
+                       ))}
+                     </div>
+                   </div>
+                 )}
+
+                 <div className="grid grid-cols-2 gap-4">
+                   <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                     <p className="text-[10px] font-bold uppercase text-slate-500 mb-1">AI Composite Score</p>
+                     <p className="text-2xl font-black text-primary">{reviewPackage?.ai_scores?.composite || 0}%</p>
+                   </div>
+                   <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                     <p className="text-[10px] font-bold uppercase text-slate-500 mb-1">Budget</p>
+                     <p className="text-sm font-bold text-slate-900 dark:text-white">₹{(selectedApp.amount/100000).toFixed(1)} Lakhs</p>
+                   </div>
                  </div>
                </div>
 
                {/* Right: Scoring */}
                <div className="space-y-6">
                  <h4 className="text-sm font-black uppercase tracking-widest text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-2">Scoring Rubric ({selectedApp.grantType})</h4>
-                 
+
                  <div className="space-y-4">
                    {[
-                     { label: 'Impact / Problem Addressed', max: 40 },
-                     { label: 'Feasibility & Plan', max: 30 },
-                     { label: 'Budget Justification', max: 20 },
-                     { label: 'Track Record', max: 10 },
-                   ].map((rubric) => (
-                     <div key={rubric.label} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-4 rounded-xl">
-                       <div className="flex justify-between items-center mb-2">
-                         <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{rubric.label}</span>
-                         <span className="text-xs font-black text-slate-400">Max {rubric.max}</span>
+                     { key: 'alignment', label: 'Alignment / Problem Addressed', max: 5 },
+                     { key: 'feasibility', label: 'Feasibility & Plan', max: 5 },
+                     { key: 'impact', label: 'Impact & Outcomes', max: 5 },
+                     { key: 'budget', label: 'Budget Justification', max: 5 },
+                     { key: 'track_record', label: 'Track Record', max: 5 },
+                   ].map((rubric) => {
+                     const aiSuggested = reviewPackage?.ai_review_package?.suggested_scores?.[rubric.key];
+                     return (
+                       <div key={rubric.key} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-4 rounded-xl">
+                         <div className="flex justify-between items-center mb-1">
+                           <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{rubric.label}</span>
+                           <span className="text-xs font-black text-slate-400">1–{rubric.max}</span>
+                         </div>
+                         {aiSuggested && (
+                           <p className="text-[10px] text-blue-500 font-bold mb-1 flex items-center gap-1">
+                             <span className="material-symbols-outlined !text-[10px]">smart_toy</span>
+                             AI Suggested: {aiSuggested.score}/5 — {aiSuggested.justification}
+                           </p>
+                         )}
+                         <input
+                           type="number" min="1" max={rubric.max}
+                           className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-3 py-2 text-sm font-black text-primary focus:ring-1 focus:ring-primary"
+                           placeholder={`Score 1-${rubric.max}`}
+                           disabled={selectedApp.status === 'Reviewed'}
+                           value={scores[rubric.key] || ''}
+                           onChange={(e) => setScores(prev => ({ ...prev, [rubric.key]: e.target.value }))}
+                         />
                        </div>
-                       <input 
-                         type="number" 
-                         className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-3 py-2 text-sm font-black text-primary focus:ring-1 focus:ring-primary"
-                         placeholder={`Score 0-${rubric.max}`}
-                         disabled={selectedApp.status === 'Reviewed'}
-                         defaultValue={selectedApp.score ? Math.floor(selectedApp.score * (rubric.max/100)) : ''}
-                       />
-                     </div>
-                   ))}
+                     );
+                   })}
                  </div>
-                 
+
                  <div>
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 block">Reviewer Feedback Comments</label>
-                    <textarea 
+                    <textarea
                       className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary h-24"
                       placeholder="Required qualitative feedback..."
                       disabled={selectedApp.status === 'Reviewed'}
+                      value={comments}
+                      onChange={(e) => setComments(e.target.value)}
                     ></textarea>
                  </div>
                </div>
@@ -238,12 +343,13 @@ const ReviewerWorkspace = ({ onNavigate, isLoggedIn, onLogout, user }) => {
                  Close
                </button>
                {selectedApp.status !== 'Reviewed' && (
-                 <button 
-                   onClick={() => setSelectedApp(null)}
-                   className="px-8 py-3 rounded-xl bg-primary text-slate-900 font-black text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 hover:shadow-xl active:scale-95 flex gap-2 items-center"
+                 <button
+                   onClick={handleSubmitReview}
+                   disabled={submitLoading || !comments}
+                   className="px-8 py-3 rounded-xl bg-primary text-slate-900 font-black text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 hover:shadow-xl active:scale-95 flex gap-2 items-center disabled:opacity-50"
                  >
                    <span className="material-symbols-outlined !text-lg">done_all</span>
-                   Submit Evaluation
+                   {submitLoading ? 'Submitting...' : 'Submit Evaluation'}
                  </button>
                )}
             </div>

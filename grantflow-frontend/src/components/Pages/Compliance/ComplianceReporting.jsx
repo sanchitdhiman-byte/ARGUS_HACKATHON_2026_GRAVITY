@@ -1,16 +1,78 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GlobalHeader from '../../Core/shared/GlobalHeader';
 import GlobalFooter from '../../Core/shared/GlobalFooter';
-
-const ACTIVE_GRANTS = [
-  { id: 'APP-EIG-2024-0012', grantType: 'EIG', title: 'Tech for All Ed', awardedDate: 'Aug 10, 2024', status: 'Active (Tranche 1)', reports: [
-    { type: 'Quarterly Narrative Report', due: 'Nov 10, 2024', status: 'Pending', requiredDocs: ['Impact Report PDF', 'Photographs'] },
-    { type: 'Utilisation Certificate (UC)', due: 'Nov 10, 2024', status: 'Pending', requiredDocs: ['Signed UC', 'Audited Statements'] }
-  ]}
-];
+import { complianceAPI, applicationsAPI } from '../../../services/api';
 
 const ComplianceReporting = ({ onNavigate, isLoggedIn, onLogout, user }) => {
   const [selectedReport, setSelectedReport] = useState(null);
+  const [ACTIVE_GRANTS, setActiveGrants] = useState([]);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [reportComments, setReportComments] = useState('');
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const appsRes = await applicationsAPI.list();
+        const activeApps = appsRes.data.filter(a =>
+          ['approved', 'active_reporting', 'agreement_acknowledged'].includes(a.status)
+        );
+        const grants = activeApps.map(app => ({
+          id: app.reference_id,
+          dbId: app.id,
+          grantType: app.grant_type,
+          title: app.project_title || app.org_name,
+          awardedDate: app.submitted_at ? new Date(app.submitted_at).toLocaleDateString('en-IN') : '',
+          status: 'Active',
+          reports: [
+            { type: 'Progress Report', due: 'Next due', status: 'Pending', requiredDocs: ['Impact Report PDF', 'Photographs'], appId: app.id },
+            { type: 'Utilisation Certificate', due: 'Next due', status: 'Pending', requiredDocs: ['Signed UC', 'Audited Statements'], appId: app.id },
+          ],
+        }));
+        setActiveGrants(grants.length > 0 ? grants : [{
+          id: 'APP-EIG-2024-0012', grantType: 'EIG', title: 'Tech for All Ed', status: 'Active (Tranche 1)',
+          reports: [
+            { type: 'Quarterly Narrative Report', due: 'Nov 10, 2024', status: 'Pending', requiredDocs: ['Impact Report PDF', 'Photographs'], appId: null },
+            { type: 'Utilisation Certificate (UC)', due: 'Nov 10, 2024', status: 'Pending', requiredDocs: ['Signed UC', 'Audited Statements'], appId: null },
+          ],
+        }]);
+      } catch {
+        setActiveGrants([{
+          id: 'APP-EIG-2024-0012', grantType: 'EIG', title: 'Tech for All Ed', status: 'Active (Tranche 1)',
+          reports: [
+            { type: 'Quarterly Narrative Report', due: 'Nov 10, 2024', status: 'Pending', requiredDocs: ['Impact Report PDF', 'Photographs'], appId: null },
+          ],
+        }]);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const handleComplianceSubmit = async () => {
+    if (!selectedReport) return;
+    setSubmitLoading(true);
+    try {
+      const appId = selectedReport.appId || 1;
+      const res = await complianceAPI.submitReport(appId, selectedReport.type, {
+        comments: reportComments,
+        submitted_via: 'portal',
+      });
+      const analysis = res.data.ai_analysis;
+      let message = 'Report submitted successfully!';
+      if (analysis) {
+        message += `\n\nAI Analysis: ${analysis.content_quality || 'N/A'}\nRecommendation: ${analysis.recommended_action || 'N/A'}`;
+        if (analysis.content_flags?.length > 0) {
+          message += `\n\nFlags:\n${analysis.content_flags.map(f => `- ${f.issue}`).join('\n')}`;
+        }
+      }
+      alert(message);
+      setSelectedReport(null);
+      setReportComments('');
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Submission failed');
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
 
   const getStatusColor = (status) => {
     if (status === 'Pending') return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-900';
@@ -21,7 +83,7 @@ const ComplianceReporting = ({ onNavigate, isLoggedIn, onLogout, user }) => {
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-background-dark font-display flex flex-col selection:bg-primary/30">
-      <GlobalHeader currentView="compliance" onNavigate={onNavigate} isLoggedIn={isLoggedIn} onLogout={onLogout} />
+      <GlobalHeader currentView="compliance" onNavigate={onNavigate} isLoggedIn={isLoggedIn} onLogout={onLogout} user={user} />
       
       <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
@@ -165,9 +227,11 @@ const ComplianceReporting = ({ onNavigate, isLoggedIn, onLogout, user }) => {
                
                <div>
                   <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 block">Additional Comments (Optional)</label>
-                  <textarea 
+                  <textarea
                     className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-primary h-24"
                     placeholder="Any notes for the Program Officer..."
+                    value={reportComments}
+                    onChange={(e) => setReportComments(e.target.value)}
                   ></textarea>
                </div>
             </div>
@@ -180,11 +244,12 @@ const ComplianceReporting = ({ onNavigate, isLoggedIn, onLogout, user }) => {
                  Cancel
                </button>
                <button 
-                 onClick={() => { alert('Report Submitted Securely.'); setSelectedReport(null); }}
+                 onClick={handleComplianceSubmit}
+                 disabled={submitLoading}
                  className="px-6 py-3 rounded-xl bg-primary text-slate-900 font-black text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 hover:shadow-xl active:scale-95 flex items-center gap-2"
                >
-                 <span className="material-symbols-outlined !text-lg">cloud_done</span>
-                 Secure Submit
+                 <span className="material-symbols-outlined !text-lg">{submitLoading ? 'hourglass_top' : 'cloud_done'}</span>
+                 {submitLoading ? 'Submitting...' : 'Secure Submit'}
                </button>
             </div>
           </div>

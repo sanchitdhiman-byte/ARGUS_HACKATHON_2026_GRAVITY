@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import GlobalHeader from '../../Core/shared/GlobalHeader';
 import GlobalFooter from '../../Core/shared/GlobalFooter';
-import { GRANTS_DATA, ORG_TYPES, checkEligibility } from '../../../data/grants';
+import { GRANTS_DATA, ORG_TYPES } from '../../../data/grants';
+import { publicAPI } from '../../../services/api';
 
 const EligibilityChecker = ({ onNavigate, isLoggedIn, onLogout, user }) => {
   const [orgType, setOrgType] = useState('');
@@ -10,22 +11,62 @@ const EligibilityChecker = ({ onNavigate, isLoggedIn, onLogout, user }) => {
   const [results, setResults] = useState(null);
   const [checking, setChecking] = useState(false);
 
-  const handleCheck = () => {
+  const handleCheck = async () => {
     if (!orgType || !fundingAmount) return;
     setChecking(true);
-    setTimeout(() => {
-      const allResults = GRANTS_DATA.map(grant => 
+    try {
+      const res = await publicAPI.eligibilityCheck(orgType, '', Number(fundingAmount));
+      // Map backend response to display format
+      const mapped = res.data.map(r => {
+        const reasons = r.reasons || [];
+        const checks = [];
+        // Always show org type check
+        const orgPass = !reasons.some(msg => msg.toLowerCase().includes('organisation type'));
+        checks.push({
+          criterion: 'Organisation Type',
+          pass: orgPass,
+          reason: orgPass ? `${orgType} is eligible for ${r.programme_name}` : reasons.find(msg => msg.toLowerCase().includes('organisation type')) || 'Not eligible',
+        });
+        // Funding range check
+        const fundingPass = !reasons.some(msg => msg.toLowerCase().includes('amount'));
+        checks.push({
+          criterion: 'Funding Amount',
+          pass: fundingPass,
+          reason: fundingPass ? `₹${Number(fundingAmount).toLocaleString()} is within the allowed range` : reasons.find(msg => msg.toLowerCase().includes('amount')) || 'Outside range',
+        });
+        // Years of operation (client-side hint — backend doesn't check this in precheck)
+        if (yearsOfOperation) {
+          const yrs = Number(yearsOfOperation);
+          const minAge = r.grant_type === 'CDG' ? 3 : r.grant_type === 'EIG' ? 2 : 1;
+          checks.push({
+            criterion: 'Years of Operation',
+            pass: yrs >= minAge,
+            reason: yrs >= minAge ? `${yrs} years meets the minimum of ${minAge}` : `Minimum ${minAge} years required`,
+          });
+        }
+        return {
+          eligible: r.likely_eligible,
+          grant_type: r.grant_type,
+          results: checks,
+        };
+      });
+      setResults(mapped);
+    } catch {
+      // Fallback to client-side check if backend is unavailable
+      const { checkEligibility } = await import('../../../data/grants');
+      const allResults = GRANTS_DATA.map(grant =>
         checkEligibility(grant.id, orgType, Number(fundingAmount), Number(yearsOfOperation) || 0)
       );
       setResults(allResults);
+    } finally {
       setChecking(false);
-    }, 800);
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 flex flex-col">
-      <GlobalHeader currentView="eligibility-check" onNavigate={onNavigate} isLoggedIn={isLoggedIn} onLogout={onLogout} />
-      
+      <GlobalHeader currentView="eligibility-check" onNavigate={onNavigate} isLoggedIn={isLoggedIn} onLogout={onLogout} user={user} />
+
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
         {/* Hero Section */}
         <div className="text-center mb-12">
@@ -53,8 +94,8 @@ const EligibilityChecker = ({ onNavigate, isLoggedIn, onLogout, user }) => {
                   </span>
                 </label>
                 <div className="relative">
-                  <select 
-                    value={orgType} 
+                  <select
+                    value={orgType}
                     onChange={e => setOrgType(e.target.value)}
                     className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3.5 text-slate-900 dark:text-white focus:border-primary focus:ring-primary/20 appearance-none font-medium"
                   >
@@ -131,10 +172,11 @@ const EligibilityChecker = ({ onNavigate, isLoggedIn, onLogout, user }) => {
             <div className="grid grid-cols-1 gap-6">
               {results.map((result, idx) => {
                 const grant = GRANTS_DATA[idx];
+                if (!grant) return null;
                 return (
                   <div key={grant.id} className={`bg-white dark:bg-slate-900 rounded-2xl border-2 overflow-hidden transition-all ${
-                    result.eligible 
-                      ? 'border-emerald-200 dark:border-emerald-800 shadow-lg shadow-emerald-100 dark:shadow-none' 
+                    result.eligible
+                      ? 'border-emerald-200 dark:border-emerald-800 shadow-lg shadow-emerald-100 dark:shadow-none'
                       : 'border-slate-200 dark:border-slate-800'
                   }`}>
                     <div className={`px-8 py-5 flex items-center justify-between ${
@@ -152,8 +194,8 @@ const EligibilityChecker = ({ onNavigate, isLoggedIn, onLogout, user }) => {
                         </div>
                       </div>
                       <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider ${
-                        result.eligible 
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' 
+                        result.eligible
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'
                           : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
                       }`}>
                         {result.eligible ? 'Likely Eligible' : 'Likely Not Eligible'}
@@ -173,7 +215,7 @@ const EligibilityChecker = ({ onNavigate, isLoggedIn, onLogout, user }) => {
                         </div>
                       ))}
                       {result.eligible && (
-                        <button 
+                        <button
                           onClick={() => onNavigate('form', { grantType: grant.id })}
                           className="mt-4 px-6 py-3 bg-primary text-slate-900 font-black rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-[0.98] text-sm"
                         >

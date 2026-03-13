@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useGoogleLogin } from '@react-oauth/google';
+import { authAPI } from '../../../services/api';
 
 const SignUpPage = ({ onNavigate }) => {
   const [formData, setFormData] = useState({
@@ -22,10 +22,8 @@ const SignUpPage = ({ onNavigate }) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.post('http://localhost:8000/api/v1/auth/register', formData);
-      if(res.status === 200) {
-        onNavigate('login');
-      }
+      await authAPI.register(formData);
+      onNavigate('login');
     } catch (err) {
       setError(err.response?.data?.detail || "An error occurred during registration");
     } finally {
@@ -34,15 +32,13 @@ const SignUpPage = ({ onNavigate }) => {
   };
 
   const loginWithGoogle = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
+    onSuccess: async () => {
       try {
-        const res = await axios.post('http://localhost:8000/api/v1/auth/google', { token: "mock-google-token" });
-        if (res.status === 200) {
-          localStorage.setItem('access_token', res.data.access_token);
-          localStorage.setItem('refresh_token', res.data.refresh_token);
-          localStorage.setItem('user', JSON.stringify(res.data.user));
-          onNavigate('login'); 
-        }
+        const res = await authAPI.googleAuth({ token: "mock-google-token" });
+        localStorage.setItem('access_token', res.data.access_token);
+        localStorage.setItem('refresh_token', res.data.refresh_token);
+        localStorage.setItem('user', JSON.stringify(res.data.user));
+        onNavigate('login');
       } catch (err) {
         setError("Google Login Failed");
       }

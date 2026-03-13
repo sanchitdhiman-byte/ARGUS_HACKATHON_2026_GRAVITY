@@ -9,7 +9,7 @@ import MobileBottomNav from '../../Core/shared/MobileBottomNav';
 
 import { GRANTS_DATA } from '../../../data/grants';
 
-const LandingPage = ({ onNavigate, isLoggedIn, onLogin, onLogout }) => {
+const LandingPage = ({ onNavigate, isLoggedIn, onLogin, onLogout, user }) => {
   const [selectedGrant, setSelectedGrant] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -24,12 +24,13 @@ const LandingPage = ({ onNavigate, isLoggedIn, onLogin, onLogout }) => {
 
   return (
     <div className="min-h-screen bg-white dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 selection:bg-primary/30 flex flex-col">
-      <GlobalHeader 
-        currentView="explore-grants" 
-        onNavigate={onNavigate} 
+      <GlobalHeader
+        currentView="explore-grants"
+        onNavigate={onNavigate}
         isLoggedIn={isLoggedIn}
         onLogin={onLogin}
         onLogout={onLogout}
+        user={user}
       />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 mb-12 flex-1 w-full">

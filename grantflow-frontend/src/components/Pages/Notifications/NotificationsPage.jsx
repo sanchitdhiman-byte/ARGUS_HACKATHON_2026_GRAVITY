@@ -1,17 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GlobalHeader from '../../Core/shared/GlobalHeader';
 import GlobalFooter from '../../Core/shared/GlobalFooter';
-
-const MOCK_NOTIFICATIONS = [
-  { id: 1, type: 'alert', title: 'Compliance Report Due soon', message: 'Your Quarterly Narrative Report for APP-EIG-2024-0012 is due in 5 days.', time: '2 hours ago', read: false },
-  { id: 2, type: 'success', title: 'Application Approved', message: 'Congratulations! Your CDG grant application APP-CDG-2024-0056 has been approved for funding.', time: '1 day ago', read: false },
-  { id: 3, type: 'info', title: 'New Application Step Added', message: 'The ECAG application now requires an Environmental Impact Plan upload.', time: '3 days ago', read: true },
-  { id: 4, type: 'update', title: 'Payment Initiated', message: 'Tranche 1 payment of ₹5,00,000 has been initiated to your registered bank account for APP-EIG-2024-0012.', time: '1 week ago', read: true },
-];
+import { notificationsAPI } from '../../../services/api';
 
 const NotificationsPage = ({ onNavigate, isLoggedIn, onLogout, user }) => {
   const [filter, setFilter] = useState('All');
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const res = await notificationsAPI.list();
+        const mapped = res.data.map(n => ({
+          id: n.id,
+          type: mapNotificationType(n.notification_type),
+          title: n.title,
+          message: n.message,
+          time: formatRelativeTime(n.created_at),
+          read: n.is_read,
+        }));
+        setNotifications(mapped);
+      } catch {
+        setNotifications([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNotifications();
+  }, []);
+
+  const mapNotificationType = (backendType) => {
+    if (!backendType) return 'info';
+    const t = backendType.toLowerCase();
+    if (t.includes('approved') || t.includes('award') || t.includes('success')) return 'success';
+    if (t.includes('reject') || t.includes('compliance_due') || t.includes('flag') || t.includes('warning')) return 'alert';
+    if (t.includes('disburs') || t.includes('payment') || t.includes('tranche')) return 'update';
+    return 'info';
+  };
+
+  const formatRelativeTime = (isoDate) => {
+    if (!isoDate) return '';
+    const diff = Date.now() - new Date(isoDate).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(isoDate).toLocaleDateString('en-IN');
+  };
 
   const filteredNotifs = notifications.filter(n => {
     if (filter === 'Unread') return !n.read;
@@ -30,18 +68,29 @@ const NotificationsPage = ({ onNavigate, isLoggedIn, onLogout, user }) => {
     }
   };
 
-  const markAsRead = (id) => {
-    setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
+  const markAsRead = async (id) => {
+    try {
+      await notificationsAPI.markRead(id);
+      setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
+    } catch {
+      // silent fail
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    const unread = notifications.filter(n => !n.read);
+    try {
+      await Promise.all(unread.map(n => notificationsAPI.markRead(n.id)));
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
+    } catch {
+      // silent fail
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-background-dark font-display flex flex-col selection:bg-primary/30">
-      <GlobalHeader currentView="notifications" onNavigate={onNavigate} isLoggedIn={isLoggedIn} onLogout={onLogout} />
-      
+      <GlobalHeader currentView="notifications" onNavigate={onNavigate} isLoggedIn={isLoggedIn} onLogout={onLogout} user={user} />
+
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
           <div>
@@ -53,22 +102,22 @@ const NotificationsPage = ({ onNavigate, isLoggedIn, onLogout, user }) => {
             </h1>
             <p className="text-slate-500 dark:text-slate-400 font-medium">Stay updated on your application status and compliance requirements.</p>
           </div>
-          
+
           <div className="flex gap-2">
-             <button 
+             <button
                onClick={() => setFilter('All')}
                className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${filter === 'All' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
              >
                All
              </button>
-             <button 
+             <button
                onClick={() => setFilter('Unread')}
                className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${filter === 'Unread' ? 'bg-primary text-slate-900' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
              >
                Unread
              </button>
              {unreadCount > 0 && (
-               <button 
+               <button
                  onClick={markAllAsRead}
                  className="px-4 py-2 ml-4 rounded-xl text-sm font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-2"
                >
@@ -79,12 +128,17 @@ const NotificationsPage = ({ onNavigate, isLoggedIn, onLogout, user }) => {
           </div>
         </div>
 
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <span className="animate-spin material-symbols-outlined !text-4xl text-primary">progress_activity</span>
+          </div>
+        ) : (
         <div className="space-y-4">
           {filteredNotifs.length > 0 ? filteredNotifs.map(notif => {
             const { icon, color } = getIconAndColor(notif.type);
-            
+
             return (
-              <div 
+              <div
                 key={notif.id}
                 className={`relative p-6 rounded-3xl border ${notif.read ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800' : 'bg-primary/5 dark:bg-primary/10 border-primary/30'} shadow-sm transition-all flex gap-6 group hover:border-primary/50`}
                 onClick={() => !notif.read && markAsRead(notif.id)}
@@ -95,7 +149,7 @@ const NotificationsPage = ({ onNavigate, isLoggedIn, onLogout, user }) => {
                  <div className={`p-4 rounded-2xl shrink-0 ${color} flex items-center justify-center`}>
                     <span className="material-symbols-outlined !text-2xl">{icon}</span>
                  </div>
-                 
+
                  <div className="flex-1">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-1 mb-2">
                        <h3 className={`text-lg transition-colors ${notif.read ? 'font-bold text-slate-700 dark:text-slate-300' : 'font-black text-slate-900 dark:text-white group-hover:text-primary'} cursor-pointer`}>
@@ -106,9 +160,9 @@ const NotificationsPage = ({ onNavigate, isLoggedIn, onLogout, user }) => {
                     <p className={`text-sm ${notif.read ? 'text-slate-500 dark:text-slate-400' : 'text-slate-700 dark:text-slate-300'} leading-relaxed`}>
                       {notif.message}
                     </p>
-                    
+
                     {notif.type === 'alert' && (
-                       <button 
+                       <button
                          onClick={(e) => { e.stopPropagation(); onNavigate('compliance'); }}
                          className="mt-4 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold rounded-lg hover:shadow-lg transition-all flex items-center gap-2 w-fit"
                        >
@@ -127,6 +181,7 @@ const NotificationsPage = ({ onNavigate, isLoggedIn, onLogout, user }) => {
             </div>
           )}
         </div>
+        )}
       </main>
 
       <GlobalFooter />

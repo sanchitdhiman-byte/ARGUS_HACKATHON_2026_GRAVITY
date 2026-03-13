@@ -9,6 +9,7 @@ import MyApplicationsPage from './components/Pages/MyApplications/MyApplications
 import ProgramOfficerDashboard from './components/Pages/Staff/ProgramOfficerDashboard';
 import ReviewerWorkspace from './components/Pages/Staff/ReviewerWorkspace';
 import FinanceDashboard from './components/Pages/Staff/FinanceDashboard';
+import AdminDashboard from './components/Pages/Staff/AdminDashboard';
 import EligibilityChecker from './components/Pages/EligibilityChecker/EligibilityChecker';
 import NotificationsPage from './components/Pages/Notifications/NotificationsPage';
 import ComplianceReporting from './components/Pages/Compliance/ComplianceReporting';
@@ -26,6 +27,15 @@ function App() {
       setUser(JSON.parse(storedUser));
       setIsLoggedIn(true);
     }
+
+    // Listen for forced logout from axios interceptor (token refresh failure)
+    const handleForceLogout = () => {
+      setIsLoggedIn(false);
+      setUser(null);
+      setView('login');
+    };
+    window.addEventListener('auth:logout', handleForceLogout);
+    return () => window.removeEventListener('auth:logout', handleForceLogout);
   }, []);
 
   const navigate = (path, data) => {
@@ -77,6 +87,8 @@ function App() {
         return <ReviewerWorkspace {...commonProps} />;
       case 'finance-dashboard':
         return <FinanceDashboard {...commonProps} />;
+      case 'admin-dashboard':
+        return <AdminDashboard {...commonProps} />;
       case 'notifications':
         return <NotificationsPage {...commonProps} />;
       case 'compliance':

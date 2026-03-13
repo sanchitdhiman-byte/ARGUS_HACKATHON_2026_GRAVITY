@@ -1,6 +1,6 @@
 import React from 'react';
 
-const FormControls = ({ currentStep, totalSteps = 6, onPrevious, onNext, onSave }) => {
+const FormControls = ({ currentStep, totalSteps = 6, onPrevious, onNext, onSave, submitting }) => {
   const isFirstStep = currentStep === 1;
   const isLastStep = currentStep === totalSteps;
 
@@ -28,12 +28,22 @@ const FormControls = ({ currentStep, totalSteps = 6, onPrevious, onNext, onSave 
           <span className="material-symbols-outlined !text-lg">arrow_back</span>
           Previous
         </button>
-        <button 
+        <button
           onClick={onNext}
-          className="flex items-center justify-center gap-2 px-8 py-3 rounded-xl bg-primary font-bold text-slate-900 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 w-full sm:w-auto active:scale-95"
+          disabled={submitting}
+          className="flex items-center justify-center gap-2 px-8 py-3 rounded-xl bg-primary font-bold text-slate-900 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 w-full sm:w-auto active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isLastStep ? 'Submit Application' : 'Next Step'}
-          <span className="material-symbols-outlined !text-lg">{isLastStep ? 'send' : 'arrow_forward'}</span>
+          {submitting ? (
+            <>
+              <span className="animate-spin material-symbols-outlined !text-lg">progress_activity</span>
+              Submitting...
+            </>
+          ) : (
+            <>
+              {isLastStep ? 'Submit Application' : 'Next Step'}
+              <span className="material-symbols-outlined !text-lg">{isLastStep ? 'send' : 'arrow_forward'}</span>
+            </>
+          )}
         </button>
       </div>
     </div>

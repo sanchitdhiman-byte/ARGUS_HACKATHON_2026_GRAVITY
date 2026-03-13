@@ -1,26 +1,74 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GlobalHeader from '../../Core/shared/GlobalHeader';
 import GlobalFooter from '../../Core/shared/GlobalFooter';
-
-const MOCK_FINANCE = [
-  { id: 'APP-EIG-2024-0012', org: 'Tech for All Ed', grantType: 'EIG', awardDate: 'Aug 10, 2024', totalAward: 1500000, disbursed: 500000, status: 'Active (Tranche 1)', nextTranche: 'Dec 15, 2024' },
-  { id: 'APP-CDG-2024-0056', org: 'Rural Connect NGO', grantType: 'CDG', awardDate: 'Sep 05, 2024', totalAward: 800000, disbursed: 800000, status: 'Fully Disbursed', nextTranche: null },
-  { id: 'APP-ECAG-2024-0089', org: 'Green Horizons', grantType: 'ECAG', awardDate: 'Oct 20, 2024', totalAward: 450000, disbursed: 0, status: 'Pending Initial Tranche', nextTranche: 'Nov 05, 2024' },
-];
+import { disbursementsAPI, dashboardAPI, applicationsAPI } from '../../../services/api';
 
 const FinanceDashboard = ({ onNavigate, isLoggedIn, onLogout, user }) => {
   const [filterStatus, setFilterStatus] = useState('All');
   const [selectedApp, setSelectedApp] = useState(null);
+  const [grants, setGrants] = useState([]);
+  const [kpis, setKpis] = useState({ totalAwarded: 0, totalDisbursed: 0, pendingPayouts: 0, activeGrants: 0 });
+  const [disbursing, setDisbursing] = useState(false);
+  const [trancheAmount, setTrancheAmount] = useState('');
 
-  const filteredApps = MOCK_FINANCE.filter(app => {
-    let match = true;
-    if (filterStatus !== 'All') {
-      if (filterStatus === 'Pending' && !app.status.includes('Pending')) match = false;
-      if (filterStatus === 'Active' && !app.status.includes('Active')) match = false;
-      if (filterStatus === 'Completed' && !app.status.includes('Fully')) match = false;
-    }
-    return match;
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [appsRes, disbRes, dashRes] = await Promise.all([
+          applicationsAPI.list(),
+          disbursementsAPI.list(),
+          dashboardAPI.fundUtilisation(),
+        ]);
+
+        const apps = appsRes.data.filter(a =>
+          ['approved', 'active_reporting', 'agreement_acknowledged'].includes(a.status)
+        );
+        const allDisb = disbRes.data || [];
+
+        const mapped = apps.map(app => {
+          const appDisb = allDisb.filter(d => d.application_id === app.id);
+          const disbursed = appDisb.filter(d => d.status === 'disbursed').reduce((s, d) => s + d.amount, 0);
+          const pending = appDisb.filter(d => ['pending', 'ready'].includes(d.status));
+          return {
+            id: app.reference_id,
+            dbId: app.id,
+            org: app.org_name || app.project_title || 'N/A',
+            grantType: app.grant_type,
+            awardDate: app.submitted_at ? new Date(app.submitted_at).toLocaleDateString('en-IN') : '',
+            totalAward: app.total_requested || 0,
+            disbursed,
+            status: disbursed >= (app.total_requested || 1) ? 'Fully Disbursed' : pending.length > 0 ? 'Pending Tranche' : 'Active',
+            nextTranche: pending.length > 0 ? 'Ready' : null,
+          };
+        });
+        setGrants(mapped);
+
+        const dash = dashRes.data;
+        setKpis({
+          totalAwarded: dash.total_committed || 0,
+          totalDisbursed: dash.total_disbursed || 0,
+          pendingPayouts: dash.total_pending_disbursement || 0,
+          activeGrants: dash.active_grant_count || 0,
+        });
+      } catch {
+        setGrants([]);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const filteredApps = grants.filter(app => {
+    if (filterStatus === 'Pending' && !app.status.includes('Pending')) return false;
+    if (filterStatus === 'Active' && app.status !== 'Active') return false;
+    if (filterStatus === 'Completed' && !app.status.includes('Fully')) return false;
+    return true;
   });
+
+  const formatCurrency = (val) => {
+    if (val >= 10000000) return `₹${(val / 10000000).toFixed(1)} Cr`;
+    if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
+    return `₹${val.toLocaleString()}`;
+  };
 
   const getStatusColor = (status) => {
     if (status.includes('Active')) return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-900';
@@ -29,10 +77,45 @@ const FinanceDashboard = ({ onNavigate, isLoggedIn, onLogout, user }) => {
     return 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
   };
 
+  const handleInitiateTransfer = async () => {
+    if (!selectedApp || !trancheAmount) return;
+    setDisbursing(true);
+    try {
+      await disbursementsAPI.create({
+        application_id: selectedApp.dbId,
+        amount: Number(trancheAmount),
+        tranche_number: 1,
+        trigger_condition: 'manual_release',
+      });
+      alert(`Transfer of ₹${Number(trancheAmount).toLocaleString()} initiated for ${selectedApp.org}`);
+      setSelectedApp(null);
+      setTrancheAmount('');
+      // Refresh data
+      const [appsRes, disbRes] = await Promise.all([applicationsAPI.list(), disbursementsAPI.list()]);
+      const apps = appsRes.data.filter(a => ['approved', 'active_reporting', 'agreement_acknowledged'].includes(a.status));
+      const allDisb = disbRes.data || [];
+      setGrants(apps.map(app => {
+        const appDisb = allDisb.filter(d => d.application_id === app.id);
+        const disbursed = appDisb.filter(d => d.status === 'disbursed').reduce((s, d) => s + d.amount, 0);
+        const pending = appDisb.filter(d => ['pending', 'ready'].includes(d.status));
+        return {
+          id: app.reference_id, dbId: app.id, org: app.org_name || app.project_title || 'N/A',
+          grantType: app.grant_type, totalAward: app.total_requested || 0, disbursed,
+          status: disbursed >= (app.total_requested || 1) ? 'Fully Disbursed' : pending.length > 0 ? 'Pending Tranche' : 'Active',
+          nextTranche: pending.length > 0 ? 'Ready' : null,
+        };
+      }));
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Transfer failed');
+    } finally {
+      setDisbursing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-background-dark font-display flex flex-col selection:bg-primary/30">
-      <GlobalHeader currentView="finance-dashboard" onNavigate={onNavigate} isLoggedIn={isLoggedIn} onLogout={onLogout} />
-      
+      <GlobalHeader currentView="finance-dashboard" onNavigate={onNavigate} isLoggedIn={isLoggedIn} onLogout={onLogout} user={user} />
+
       <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
           <div>
@@ -50,7 +133,7 @@ const FinanceDashboard = ({ onNavigate, isLoggedIn, onLogout, user }) => {
              </div>
              <div className="pr-4">
                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-0.5">Fund Pool Balance</p>
-               <p className="text-sm font-black text-slate-900 dark:text-white">₹45.2 Crores</p>
+               <p className="text-sm font-black text-slate-900 dark:text-white">{formatCurrency(kpis.totalAwarded - kpis.totalDisbursed)}</p>
              </div>
           </div>
         </div>
@@ -58,10 +141,10 @@ const FinanceDashboard = ({ onNavigate, isLoggedIn, onLogout, user }) => {
         {/* KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
            {[
-             { label: "Total Awarded", value: "₹2.7 Cr", icon: "monetization_on", color: "text-blue-500", bg: "bg-blue-500/10" },
-             { label: "Total Disbursed", value: "₹1.3 Cr", icon: "payments", color: "text-green-500", bg: "bg-green-500/10" },
-             { label: "Pending Payouts", value: 4, icon: "schedule", color: "text-amber-500", bg: "bg-amber-500/10" },
-             { label: "Active Grants", value: 18, icon: "assessment", color: "text-purple-500", bg: "bg-purple-500/10" },
+             { label: "Total Awarded", value: formatCurrency(kpis.totalAwarded), icon: "monetization_on", color: "text-blue-500", bg: "bg-blue-500/10" },
+             { label: "Total Disbursed", value: formatCurrency(kpis.totalDisbursed), icon: "payments", color: "text-green-500", bg: "bg-green-500/10" },
+             { label: "Pending Payouts", value: formatCurrency(kpis.pendingPayouts), icon: "schedule", color: "text-amber-500", bg: "bg-amber-500/10" },
+             { label: "Active Grants", value: kpis.activeGrants, icon: "assessment", color: "text-purple-500", bg: "bg-purple-500/10" },
            ].map((kpi, idx) => (
              <div key={idx} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
                <div className="absolute -right-4 -top-4 w-24 h-24 bg-gradient-to-br from-transparent to-slate-100 dark:to-slate-800 rounded-full opacity-50 group-hover:scale-110 transition-transform duration-500"></div>
@@ -81,7 +164,7 @@ const FinanceDashboard = ({ onNavigate, isLoggedIn, onLogout, user }) => {
                <span className="material-symbols-outlined text-primary">price_check</span>
                <h3 className="font-black text-lg text-slate-900 dark:text-white">Grant Ledger</h3>
             </div>
-            <select 
+            <select
               className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer w-full md:w-auto"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -115,15 +198,15 @@ const FinanceDashboard = ({ onNavigate, isLoggedIn, onLogout, user }) => {
                       </div>
                     </td>
                     <td className="px-6 py-4 font-bold text-slate-900 dark:text-white max-w-[200px] truncate">{app.org}</td>
-                    <td className="px-6 py-4 font-black text-slate-900 dark:text-white text-base">₹{(app.totalAward / 100000).toFixed(1)}L</td>
+                    <td className="px-6 py-4 font-black text-slate-900 dark:text-white text-base">{formatCurrency(app.totalAward)}</td>
                     <td className="px-6 py-4">
                       <div className="w-48">
                          <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-1 dark:text-slate-400">
-                           <span>₹{(app.disbursed / 100000).toFixed(1)}L</span>
-                           <span>{Math.round((app.disbursed/app.totalAward)*100)}%</span>
+                           <span>{formatCurrency(app.disbursed)}</span>
+                           <span>{app.totalAward > 0 ? Math.round((app.disbursed/app.totalAward)*100) : 0}%</span>
                          </div>
                          <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-700/50 rounded-full overflow-hidden">
-                           <div className="h-full bg-primary rounded-full" style={{ width: `${(app.disbursed/app.totalAward)*100}%` }}></div>
+                           <div className="h-full bg-primary rounded-full" style={{ width: `${app.totalAward > 0 ? (app.disbursed/app.totalAward)*100 : 0}%` }}></div>
                          </div>
                       </div>
                     </td>
@@ -136,12 +219,14 @@ const FinanceDashboard = ({ onNavigate, isLoggedIn, onLogout, user }) => {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button 
-                        onClick={() => setSelectedApp(app)}
-                        className={`px-4 py-2 text-sm font-bold text-white rounded-lg transition-all shadow-sm ${app.status.includes('Fully') ? 'bg-slate-300 dark:bg-slate-700 text-slate-500 cursor-not-allowed hidden' : 'bg-primary text-slate-900 hover:bg-primary/90 hover:shadow-primary/20 hover:-translate-y-0.5'}`}
-                      >
-                        Process Payout
-                      </button>
+                      {!app.status.includes('Fully') && (
+                        <button
+                          onClick={() => { setSelectedApp(app); setTrancheAmount(Math.round((app.totalAward - app.disbursed) / 2) || 100000); }}
+                          className="px-4 py-2 text-sm font-bold bg-primary text-slate-900 rounded-lg hover:bg-primary/90 hover:shadow-primary/20 hover:-translate-y-0.5 transition-all shadow-sm"
+                        >
+                          Process Payout
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )) : (
@@ -160,7 +245,7 @@ const FinanceDashboard = ({ onNavigate, isLoggedIn, onLogout, user }) => {
         </div>
       </main>
 
-      {/* Finance Action Modal stub */}
+      {/* Finance Action Modal */}
       {selectedApp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedApp(null)} />
@@ -178,7 +263,7 @@ const FinanceDashboard = ({ onNavigate, isLoggedIn, onLogout, user }) => {
                <div className="grid grid-cols-2 gap-4">
                  <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Awarded</p>
-                   <p className="font-black text-slate-900 dark:text-white text-lg">₹{(selectedApp.totalAward).toLocaleString()}</p>
+                   <p className="font-black text-slate-900 dark:text-white text-lg">₹{selectedApp.totalAward.toLocaleString()}</p>
                  </div>
                  <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-xl">
                    <p className="text-[10px] font-bold text-amber-800 dark:text-amber-500 uppercase tracking-widest mb-1">Pending Balance</p>
@@ -190,13 +275,14 @@ const FinanceDashboard = ({ onNavigate, isLoggedIn, onLogout, user }) => {
                  <p className="text-sm font-black text-slate-900 dark:text-white mb-2">Process Next Tranche</p>
                  <div className="relative mb-3">
                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">₹</span>
-                   <input 
-                     type="number" 
+                   <input
+                     type="number"
                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-8 pr-4 py-3 text-lg font-black focus:border-primary focus:ring-1 focus:ring-primary dark:text-white"
-                     defaultValue={selectedApp.totalAward === 450000 ? 250000 : 500000}
+                     value={trancheAmount}
+                     onChange={(e) => setTrancheAmount(e.target.value)}
                    />
                  </div>
-                 
+
                  <div className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
                    <span className="material-symbols-outlined text-green-500">verified</span>
                    <div>
@@ -206,25 +292,26 @@ const FinanceDashboard = ({ onNavigate, isLoggedIn, onLogout, user }) => {
                  </div>
                </div>
             </div>
-            
+
             <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/20 flex items-center justify-between gap-3">
                <button className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-primary transition-colors">
                  <span className="material-symbols-outlined !text-base">account_balance</span>
                  View Bank Details
                </button>
                <div className="flex items-center gap-3">
-                 <button 
+                 <button
                    onClick={() => setSelectedApp(null)}
                    className="px-6 py-3 rounded-xl text-slate-600 dark:text-slate-300 font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
                  >
                    Cancel
                  </button>
-                 <button 
-                   onClick={() => { alert('Transfer Initiated Securely.'); setSelectedApp(null); }}
-                   className="px-6 py-3 rounded-xl bg-primary text-slate-900 font-black text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 hover:shadow-xl active:scale-95 flex items-center gap-2"
+                 <button
+                   onClick={handleInitiateTransfer}
+                   disabled={disbursing}
+                   className="px-6 py-3 rounded-xl bg-primary text-slate-900 font-black text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 hover:shadow-xl active:scale-95 flex items-center gap-2 disabled:opacity-50"
                  >
-                   <span className="material-symbols-outlined !text-lg">send</span>
-                   Initiate Transfer
+                   <span className="material-symbols-outlined !text-lg">{disbursing ? 'hourglass_top' : 'send'}</span>
+                   {disbursing ? 'Processing...' : 'Initiate Transfer'}
                  </button>
                </div>
             </div>

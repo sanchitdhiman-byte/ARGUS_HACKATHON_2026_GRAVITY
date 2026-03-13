@@ -11,9 +11,12 @@ import FormControls from './FormControls';
 import GuidanceCards from './GuidanceCards';
 import GlobalFooter from '../../Core/shared/GlobalFooter';
 import { GRANTS_DATA } from '../../../data/grants';
+import { applicationsAPI } from '../../../services/api';
 
 const ApplicationForm = ({ onNavigate, isLoggedIn, onLogout, selectedGrantType }) => {
   const [currentStep, setCurrentStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
   const totalSteps = 6;
   const currentGrant = selectedGrantType || 'CDG';
 
@@ -41,17 +44,30 @@ const ApplicationForm = ({ onNavigate, isLoggedIn, onLogout, selectedGrantType }
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleNext = () => {
+  // Allow chatbot to push validated data into form state
+  const handleChatDataPush = (fieldUpdates) => {
+    setFormData(prev => ({ ...prev, ...fieldUpdates }));
+  };
+
+  const handleNext = async () => {
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      console.log('--- SUBMITTING GRANT APPLICATION ---');
-      console.log('Grant Type:', currentGrant);
-      console.log('Payload:', JSON.stringify(formData, null, 2));
-      console.log('------------------------------------');
-      alert(`Application for ${currentGrant} submitted successfully! Check console for payload.`);
-      onNavigate('landing');
+      // Submit application via API
+      setSubmitting(true);
+      setSubmitError(null);
+      try {
+        const res = await applicationsAPI.create(currentGrant, formData);
+        const refId = res.data.reference_id;
+        alert(`Application submitted successfully!\nReference: ${refId}\nAI Score: ${res.data.ai_score}`);
+        onNavigate('my-applications');
+      } catch (err) {
+        const detail = err.response?.data?.detail || err.message;
+        setSubmitError(typeof detail === 'string' ? detail : 'Submission failed. Please try again.');
+      } finally {
+        setSubmitting(false);
+      }
     }
   };
 
@@ -63,7 +79,8 @@ const ApplicationForm = ({ onNavigate, isLoggedIn, onLogout, selectedGrantType }
   };
 
   const handleSave = () => {
-    alert("Draft saved successfully!");
+    localStorage.setItem(`draft_${currentGrant}`, JSON.stringify(formData));
+    alert("Draft saved locally!");
   };
 
   const stepProps = {
@@ -104,19 +121,27 @@ const ApplicationForm = ({ onNavigate, isLoggedIn, onLogout, selectedGrantType }
 
         <FormStepper currentStep={currentStep} totalSteps={totalSteps} grantType={currentGrant} />
         
+        {submitError && (
+          <div className="mb-6 bg-rose-500/10 border border-rose-500/50 text-rose-600 dark:text-rose-400 px-6 py-4 rounded-2xl text-sm font-bold flex items-center gap-3">
+            <span className="material-symbols-outlined">error</span>
+            {submitError}
+          </div>
+        )}
+
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {renderStep()}
 
-          <FormControls 
-            currentStep={currentStep} 
+          <FormControls
+            currentStep={currentStep}
             totalSteps={totalSteps}
-            onNext={handleNext} 
-            onPrevious={handlePrevious} 
+            onNext={handleNext}
+            onPrevious={handlePrevious}
             onSave={handleSave}
+            submitting={submitting}
           />
         </div>
 
-        <GuidanceCards />
+        <GuidanceCards grantType={currentGrant} onChatDataPush={handleChatDataPush} />
 
         <div className="mt-16 py-8 border-t border-slate-200 dark:border-slate-800">
           <p className="text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-8">

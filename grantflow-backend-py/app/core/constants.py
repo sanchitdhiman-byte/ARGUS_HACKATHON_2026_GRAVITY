@@ -1,0 +1,71 @@
+"""Grant programme definitions, eligibility rules, and scoring rubrics."""
+
+GRANT_PROGRAMMES = {
+    "CDG": {
+        "name": "Community Development Grant",
+        "purpose": "Fund community-level infrastructure and social service projects",
+        "funding_min": 200_000,
+        "funding_max": 2_000_000,
+        "duration_min_months": 6,
+        "duration_max_months": 18,
+        "eligible_org_types": ["NGO", "Trust", "Section 8 Company"],
+        "min_years_operation": 2,
+        "overhead_cap_pct": 15,
+        "budget_tolerance": 500,
+        "reviewers_required": 1,
+        "scoring_rubric": {
+            "community_need": {"weight": 25, "label": "Community Need & Problem Clarity"},
+            "project_design": {"weight": 25, "label": "Project Design & Feasibility"},
+            "track_record": {"weight": 20, "label": "Organisation Track Record"},
+            "impact": {"weight": 20, "label": "Expected Impact & Outcomes"},
+            "budget_realism": {"weight": 10, "label": "Budget Realism"},
+        },
+    },
+    "EIG": {
+        "name": "Education Innovation Grant",
+        "purpose": "Fund technology-enabled or pedagogy-innovation projects improving learning outcomes",
+        "funding_min": 500_000,
+        "funding_max": 5_000_000,
+        "duration_min_months": 12,
+        "duration_max_months": 24,
+        "eligible_org_types": ["NGO", "EdTech Non-profit", "Research Institution", "University"],
+        "min_years_operation": 1,
+        "min_schools_targeted": 5,
+        "overhead_cap_pct": 15,
+        "budget_tolerance": 500,
+        "reviewers_required": 2,
+        "scoring_rubric": {
+            "innovation": {"weight": 25, "label": "Innovation & Novelty"},
+            "educational_impact": {"weight": 25, "label": "Educational Impact Potential"},
+            "team_capacity": {"weight": 20, "label": "Team & Organisational Capacity"},
+            "scalability": {"weight": 15, "label": "Scalability & Sustainability"},
+            "budget_efficiency": {"weight": 15, "label": "Budget Efficiency"},
+        },
+    },
+    "ECAG": {
+        "name": "Environment & Climate Action Grant",
+        "purpose": "Fund grassroots environmental conservation, climate resilience, and clean energy projects",
+        "funding_min": 300_000,
+        "funding_max": 3_000_000,
+        "duration_min_months": 6,
+        "duration_max_months": 24,
+        "eligible_org_types": ["NGO", "FPO", "Panchayat", "Research Institution"],
+        "overhead_cap_pct": 15,
+        "budget_tolerance": 500,
+        "reviewers_required": 1,
+        "scoring_rubric": {
+            "environmental_impact": {"weight": 30, "label": "Environmental Impact & Urgency"},
+            "community_ownership": {"weight": 25, "label": "Community Ownership & Inclusion"},
+            "technical_soundness": {"weight": 20, "label": "Technical Soundness"},
+            "org_capacity": {"weight": 15, "label": "Organisation & Team Capacity"},
+            "budget_sustainability": {"weight": 10, "label": "Budget Realism & Sustainability"},
+        },
+    },
+}
+
+CLIMATE_VULNERABLE_DISTRICTS = [
+    "Sundarbans", "Kutch", "Leh", "Ladakh", "Bundelkhand",
+    "Vidarbha", "Kalahandi", "Raichur", "Anantapur", "Jaisalmer",
+    "Barmer", "Chamoli", "Pithoragarh", "East Godavari", "Krishna",
+    "Cuddalore", "Nagapattinam", "Alappuzha", "Ernakulam",
+]

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GlobalHeader from '../../Core/shared/GlobalHeader';
 import GlobalFooter from '../../Core/shared/GlobalFooter';
 import MobileBottomNav from '../../Core/shared/MobileBottomNav';
+import { applicationsAPI } from '../../../services/api';
 
 const StatusModal = ({ application, onClose }) => {
   if (!application) return null;
@@ -156,17 +157,39 @@ const ApplicationDetailsModal = ({ application, onClose }) => {
   );
 };
 
-const MyApplicationsPage = ({ onNavigate, isLoggedIn, onLogout }) => {
+const MyApplicationsPage = ({ onNavigate, isLoggedIn, onLogout, user }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState(null);
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const applications = [
-    { id: 'GS-8821', type: 'CDG', title: 'Community Garden Initiative', category: 'Urban Development', requested: '₹1,50,000', date: 'Oct 12, 2023', stage: 'Under Review', status: 'In Review' },
-    { id: 'GS-9045', type: 'EIG', title: 'Solar Panel Installation', category: 'Renewable Energy', requested: '₹4,50,000', date: 'Nov 05, 2023', stage: 'Screening', status: 'Pending' },
-    { id: 'GS-7732', type: 'ECAG', title: 'After-school STEM Program', category: 'Education', requested: '₹2,25,000', date: 'Aug 20, 2023', stage: 'Agreement', status: 'Approved' },
-  ];
+  useEffect(() => {
+    const fetchApps = async () => {
+      try {
+        const res = await applicationsAPI.list();
+        const mapped = res.data.map(app => ({
+          id: app.reference_id,
+          dbId: app.id,
+          type: app.grant_type,
+          title: app.project_title || app.org_name || 'Untitled',
+          category: app.grant_type === 'CDG' ? 'Community' : app.grant_type === 'EIG' ? 'Education' : 'Environment',
+          requested: `₹${(app.total_requested || 0).toLocaleString('en-IN')}`,
+          date: app.submitted_at ? new Date(app.submitted_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+          stage: app.status?.replace(/_/g, ' '),
+          status: app.status === 'approved' ? 'Approved' : app.status === 'rejected' ? 'Rejected' : app.status === 'reviewed' ? 'Reviewed' : 'In Review',
+          aiScore: app.ai_score,
+        }));
+        setApplications(mapped);
+      } catch {
+        // Fallback to empty
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchApps();
+  }, []);
 
   const filteredApps = applications.filter(app => 
     app.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -185,11 +208,12 @@ const MyApplicationsPage = ({ onNavigate, isLoggedIn, onLogout }) => {
 
   return (
     <div className="min-h-screen bg-white dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 flex flex-col">
-      <GlobalHeader 
-        currentView="my-applications" 
-        onNavigate={onNavigate} 
+      <GlobalHeader
+        currentView="my-applications"
+        onNavigate={onNavigate}
         isLoggedIn={isLoggedIn}
         onLogout={onLogout}
+        user={user}
       />
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
