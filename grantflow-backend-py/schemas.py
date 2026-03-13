@@ -102,6 +102,49 @@ class CreateStaffRequest(BaseModel):
 class UpdateRoleRequest(BaseModel):
     role: RoleEnum
 
+class GrantProgramResponse(BaseModel):
+    id: int
+    code: str
+    title: str
+    short_title: str
+    description: str
+    purpose: Optional[str] = None
+    funding_min: float
+    funding_max: float
+    funding_range: Optional[str] = None
+    duration_min: int
+    duration_max: int
+    eligible_types: str
+    min_years: int
+    deadline: Optional[str] = None
+    geographic_focus: Optional[str] = None
+    total_budget: Optional[str] = None
+    max_awards: Optional[int] = None
+    is_active: bool
+
+    class Config:
+        from_attributes = True
+
+
+class GrantProgramCreate(BaseModel):
+    code: str
+    title: str
+    short_title: str
+    description: str
+    purpose: Optional[str] = None
+    funding_min: float
+    funding_max: float
+    funding_range: Optional[str] = None
+    duration_min: int
+    duration_max: int
+    eligible_types: str
+    min_years: int = 0
+    deadline: Optional[str] = None
+    geographic_focus: Optional[str] = None
+    total_budget: Optional[str] = None
+    max_awards: Optional[int] = None
+
+
 class AuditLogResponse(BaseModel):
     id: int
     actor_id: Optional[int] = None

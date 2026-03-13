@@ -119,6 +119,29 @@ class AuditLog(Base):
     details = Column(Text, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
+class GrantProgram(Base):
+    __tablename__ = "grant_programs"
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, index=True)  # CDG, EIG, ECAG
+    title = Column(String)
+    short_title = Column(String)
+    description = Column(Text)
+    purpose = Column(Text, nullable=True)
+    funding_min = Column(Float)
+    funding_max = Column(Float)
+    funding_range = Column(String, nullable=True)
+    duration_min = Column(Integer)
+    duration_max = Column(Integer)
+    eligible_types = Column(Text)  # JSON array string
+    min_years = Column(Integer, default=0)
+    deadline = Column(String, nullable=True)
+    geographic_focus = Column(String, nullable=True)
+    total_budget = Column(String, nullable=True)
+    max_awards = Column(Integer, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class ComplianceReport(Base):
     __tablename__ = "compliance_reports"
     id = Column(Integer, primary_key=True, index=True)

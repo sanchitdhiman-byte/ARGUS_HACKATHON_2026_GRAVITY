@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import GlobalHeader from '../../Core/shared/GlobalHeader';
 import FormStepper from './FormStepper';
 import OrganisationStep from './OrganisationStep';
@@ -12,10 +13,19 @@ import GuidanceCards from './GuidanceCards';
 import GlobalFooter from '../../Core/shared/GlobalFooter';
 import { GRANTS_DATA } from '../../../data/grants';
 
-const ApplicationForm = ({ onNavigate, isLoggedIn, onLogout, selectedGrantType }) => {
+const ApplicationForm = ({ onNavigate, isLoggedIn, onLogout, user, selectedGrantType }) => {
   const [currentStep, setCurrentStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
   const totalSteps = 6;
   const currentGrant = selectedGrantType || 'CDG';
+
+  // Guard: must be logged in to access the form
+  useEffect(() => {
+    if (!isLoggedIn) {
+      onNavigate('login');
+    }
+  }, [isLoggedIn]);
 
   const [formData, setFormData] = useState({
     // Org
@@ -41,17 +51,31 @@ const ApplicationForm = ({ onNavigate, isLoggedIn, onLogout, selectedGrantType }
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleSubmitToAPI = async () => {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const token = localStorage.getItem('access_token');
+      await axios.post(
+        'http://localhost:8000/api/v1/applications',
+        { grantType: currentGrant, formData },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      onNavigate('my-applications');
+    } catch (err) {
+      setSubmitError(err.response?.data?.detail || 'Submission failed. Please try again.');
+      setCurrentStep(6);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleNext = () => {
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      console.log('--- SUBMITTING GRANT APPLICATION ---');
-      console.log('Grant Type:', currentGrant);
-      console.log('Payload:', JSON.stringify(formData, null, 2));
-      console.log('------------------------------------');
-      alert(`Application for ${currentGrant} submitted successfully! Check console for payload.`);
-      onNavigate('landing');
+      handleSubmitToAPI();
     }
   };
 
@@ -107,12 +131,19 @@ const ApplicationForm = ({ onNavigate, isLoggedIn, onLogout, selectedGrantType }
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {renderStep()}
 
-          <FormControls 
-            currentStep={currentStep} 
+          {submitError && (
+            <div className="bg-rose-500/10 border border-rose-500/50 text-rose-600 dark:text-rose-400 px-4 py-3 rounded-xl text-sm font-medium">
+              {submitError}
+            </div>
+          )}
+
+          <FormControls
+            currentStep={currentStep}
             totalSteps={totalSteps}
-            onNext={handleNext} 
-            onPrevious={handlePrevious} 
+            onNext={handleNext}
+            onPrevious={handlePrevious}
             onSave={handleSave}
+            submitting={submitting}
           />
         </div>
 

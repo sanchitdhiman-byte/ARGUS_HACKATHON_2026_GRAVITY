@@ -64,6 +64,19 @@ export default function AdminDashboard({ onNavigate, isLoggedIn, onLogout, user 
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState('');
 
+  // Grant programmes
+  const [grantPrograms, setGrantPrograms] = useState([]);
+  const [showGrantForm, setShowGrantForm] = useState(false);
+  const [grantForm, setGrantForm] = useState({
+    code: '', title: '', short_title: '', description: '', purpose: '',
+    funding_min: '', funding_max: '', funding_range: '',
+    duration_min: '', duration_max: '',
+    eligible_types: '', min_years: 0,
+    deadline: '', geographic_focus: '', total_budget: '', max_awards: '',
+  });
+  const [grantCreateLoading, setGrantCreateLoading] = useState(false);
+  const [grantCreateError, setGrantCreateError] = useState('');
+
   // Role assignment
   const [roleEditing, setRoleEditing] = useState(null); // user id being edited
   const [roleValue, setRoleValue] = useState('');
@@ -92,14 +105,23 @@ export default function AdminDashboard({ onNavigate, isLoggedIn, onLogout, user 
     } catch (e) { setError(e.message); }
   }, []);
 
+  const fetchGrantPrograms = useCallback(async () => {
+    try {
+      const r = await fetch(`${API}/admin/grants`, { headers: authHeaders() });
+      if (!r.ok) throw new Error('Failed to load grant programmes');
+      setGrantPrograms(await r.json());
+    } catch (e) { setError(e.message); }
+  }, []);
+
   useEffect(() => {
     setError('');
     setLoading(true);
     const p = tab === 'overview' ? fetchStats()
             : tab === 'users'    ? fetchUsers()
+            : tab === 'grants'   ? fetchGrantPrograms()
             : fetchAuditLog();
     p.finally(() => setLoading(false));
-  }, [tab, fetchStats, fetchUsers, fetchAuditLog]);
+  }, [tab, fetchStats, fetchUsers, fetchAuditLog, fetchGrantPrograms]);
 
   const handleCreateStaff = async (e) => {
     e.preventDefault();
@@ -147,12 +169,64 @@ export default function AdminDashboard({ onNavigate, isLoggedIn, onLogout, user 
     } catch (e) { setError(e.message); }
   };
 
+  const handleCreateGrant = async (e) => {
+    e.preventDefault();
+    setGrantCreateLoading(true);
+    setGrantCreateError('');
+    try {
+      const payload = {
+        ...grantForm,
+        funding_min: parseFloat(grantForm.funding_min),
+        funding_max: parseFloat(grantForm.funding_max),
+        duration_min: parseInt(grantForm.duration_min),
+        duration_max: parseInt(grantForm.duration_max),
+        min_years: parseInt(grantForm.min_years) || 0,
+        max_awards: grantForm.max_awards ? parseInt(grantForm.max_awards) : null,
+        // eligible_types must be a JSON string like '["NGO","Trust"]'
+        eligible_types: JSON.stringify(
+          grantForm.eligible_types.split(',').map(s => s.trim()).filter(Boolean)
+        ),
+      };
+      const r = await fetch(`${API}/admin/grants`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(payload),
+      });
+      if (!r.ok) {
+        const d = await r.json();
+        throw new Error(d.detail || 'Failed to create grant programme');
+      }
+      setShowGrantForm(false);
+      setGrantForm({
+        code: '', title: '', short_title: '', description: '', purpose: '',
+        funding_min: '', funding_max: '', funding_range: '',
+        duration_min: '', duration_max: '',
+        eligible_types: '', min_years: 0,
+        deadline: '', geographic_focus: '', total_budget: '', max_awards: '',
+      });
+      fetchGrantPrograms();
+    } catch (e) { setGrantCreateError(e.message); }
+    finally { setGrantCreateLoading(false); }
+  };
+
+  const handleToggleGrant = async (g) => {
+    try {
+      const r = await fetch(`${API}/admin/grants/${g.id}/toggle`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+      });
+      if (!r.ok) throw new Error('Failed to toggle grant status');
+      fetchGrantPrograms();
+    } catch (e) { setError(e.message); }
+  };
+
   const fmt = (n) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
   const fmtDate = (s) => s ? new Date(s).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 
   const TABS = [
     { id: 'overview', label: 'Overview', icon: 'dashboard' },
     { id: 'users',    label: 'User Management', icon: 'manage_accounts' },
+    { id: 'grants',   label: 'Grant Programmes', icon: 'workspace_premium' },
     { id: 'audit',    label: 'Audit Log', icon: 'history' },
   ];
 
@@ -462,6 +536,156 @@ export default function AdminDashboard({ onNavigate, isLoggedIn, onLogout, user 
                       </tbody>
                     </table>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* ─── GRANT PROGRAMMES TAB ─── */}
+            {tab === 'grants' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <p className="text-slate-500 font-medium">{grantPrograms.length} grant programme(s) on platform</p>
+                  <button
+                    onClick={() => setShowGrantForm(v => !v)}
+                    className="flex items-center gap-2 bg-primary hover:bg-primary/90 px-5 py-2.5 rounded-xl text-sm font-black text-slate-900 transition-all shadow-lg shadow-primary/10 active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-base">add</span>
+                    New Grant Programme
+                  </button>
+                </div>
+
+                {showGrantForm && (
+                  <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white mb-5 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary">workspace_premium</span>
+                      Create Grant Programme
+                    </h3>
+                    {grantCreateError && (
+                      <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{grantCreateError}</div>
+                    )}
+                    <form onSubmit={handleCreateGrant} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {[
+                        { key: 'code', label: 'Code (e.g. CDG)', placeholder: 'NEWGRANT', required: true },
+                        { key: 'short_title', label: 'Short Title', placeholder: 'NGT', required: true },
+                        { key: 'title', label: 'Full Title', placeholder: 'New Grant Type (NGT)', required: true, col2: true },
+                        { key: 'purpose', label: 'Purpose', placeholder: 'One-line purpose...', col2: true },
+                      ].map(f => (
+                        <div key={f.key} className={f.col2 ? 'sm:col-span-2' : ''}>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{f.label}</label>
+                          <input
+                            required={f.required}
+                            value={grantForm[f.key]}
+                            onChange={e => setGrantForm(p => ({ ...p, [f.key]: e.target.value }))}
+                            placeholder={f.placeholder}
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50"
+                          />
+                        </div>
+                      ))}
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Description</label>
+                        <textarea
+                          required
+                          rows={3}
+                          value={grantForm.description}
+                          onChange={e => setGrantForm(p => ({ ...p, description: e.target.value }))}
+                          placeholder="Full description of the grant programme..."
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Min Funding (₹)</label>
+                        <input required type="number" value={grantForm.funding_min} onChange={e => setGrantForm(p => ({ ...p, funding_min: e.target.value }))}
+                          placeholder="200000" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Max Funding (₹)</label>
+                        <input required type="number" value={grantForm.funding_max} onChange={e => setGrantForm(p => ({ ...p, funding_max: e.target.value }))}
+                          placeholder="2000000" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Min Duration (months)</label>
+                        <input required type="number" value={grantForm.duration_min} onChange={e => setGrantForm(p => ({ ...p, duration_min: e.target.value }))}
+                          placeholder="6" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Max Duration (months)</label>
+                        <input required type="number" value={grantForm.duration_max} onChange={e => setGrantForm(p => ({ ...p, duration_max: e.target.value }))}
+                          placeholder="18" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Eligible Org Types (comma-separated)</label>
+                        <input required value={grantForm.eligible_types} onChange={e => setGrantForm(p => ({ ...p, eligible_types: e.target.value }))}
+                          placeholder="NGO, Trust, Section 8 Company"
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Deadline</label>
+                        <input value={grantForm.deadline} onChange={e => setGrantForm(p => ({ ...p, deadline: e.target.value }))}
+                          placeholder="June 30, 2026" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Max Awards</label>
+                        <input type="number" value={grantForm.max_awards} onChange={e => setGrantForm(p => ({ ...p, max_awards: e.target.value }))}
+                          placeholder="10" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                      </div>
+                      <div className="sm:col-span-2 flex justify-end gap-3 pt-2">
+                        <button type="button" onClick={() => setShowGrantForm(false)}
+                          className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">Cancel</button>
+                        <button type="submit" disabled={grantCreateLoading}
+                          className="flex items-center gap-2 bg-primary hover:bg-primary/90 px-6 py-2.5 rounded-xl text-sm font-black text-slate-900 transition-all disabled:opacity-60">
+                          {grantCreateLoading ? <span className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" /> : <span className="material-symbols-outlined text-base">add</span>}
+                          Create Programme
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {grantPrograms.map(g => (
+                    <div key={g.id} className={`bg-white dark:bg-slate-900 rounded-3xl border shadow-sm p-6 transition-all ${g.is_active ? 'border-slate-200 dark:border-slate-800' : 'border-slate-100 dark:border-slate-800/50 opacity-60'}`}>
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <span className="inline-block px-2.5 py-1 bg-primary/10 text-slate-900 text-xs font-black rounded-lg mb-2">{g.code}</span>
+                          <h3 className="font-black text-slate-900 dark:text-white text-base leading-tight">{g.title}</h3>
+                        </div>
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${g.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${g.is_active ? 'bg-green-500' : 'bg-red-400'}`} />
+                          {g.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <p className="text-slate-500 dark:text-slate-400 text-xs mb-4 line-clamp-2">{g.description}</p>
+                      <div className="grid grid-cols-2 gap-2 mb-4 text-xs">
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-2.5">
+                          <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px] mb-0.5">Funding</p>
+                          <p className="font-black text-primary">{g.funding_range || `₹${(g.funding_min/100000).toFixed(0)}L–₹${(g.funding_max/100000).toFixed(0)}L`}</p>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-2.5">
+                          <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px] mb-0.5">Duration</p>
+                          <p className="font-black text-slate-700 dark:text-slate-300">{g.duration_min}–{g.duration_max} mo</p>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-2.5">
+                          <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px] mb-0.5">Deadline</p>
+                          <p className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">{g.deadline || 'Open'}</p>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-2.5">
+                          <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px] mb-0.5">Max Awards</p>
+                          <p className="font-black text-slate-700 dark:text-slate-300">{g.max_awards || '—'}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleToggleGrant(g)}
+                        className={`w-full py-2 rounded-xl text-xs font-bold transition-all ${g.is_active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}
+                      >
+                        {g.is_active ? 'Deactivate Programme' : 'Activate Programme'}
+                      </button>
+                    </div>
+                  ))}
+                  {grantPrograms.length === 0 && (
+                    <div className="col-span-3 py-16 text-center text-slate-400 font-medium">
+                      No grant programmes found
+                    </div>
+                  )}
                 </div>
               </div>
             )}

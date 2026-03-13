@@ -21,6 +21,12 @@ def _audit(db: Session, actor: models.User, action: str, object_type: str, objec
     db.add(entry)
     db.commit()
 
+@router.get("/grants", response_model=list[schemas.GrantProgramResponse])
+def get_grants(db: Session = Depends(database.get_db)):
+    """Public endpoint — returns all active grant programmes"""
+    return db.query(models.GrantProgram).filter(models.GrantProgram.is_active == True).all()
+
+
 @router.post("/applications", response_model=schemas.ApplicationResponse)
 def create_application(app_comp: schemas.ApplicationCreate, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
     ref_id = f"APP-{app_comp.grantType}-2026-{int(time.time() * 1000) % 10000}X"

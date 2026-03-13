@@ -173,6 +173,50 @@ def get_stats(
     }
 
 
+# --- Grant Programme Management ---
+
+@router.get("/grants", response_model=list[schemas.GrantProgramResponse])
+def list_grants(
+    admin: models.User = Depends(require_admin),
+    db: Session = Depends(database.get_db)
+):
+    return db.query(models.GrantProgram).all()
+
+
+@router.post("/grants", response_model=schemas.GrantProgramResponse)
+def create_grant_program(
+    grant_data: schemas.GrantProgramCreate,
+    admin: models.User = Depends(require_admin),
+    db: Session = Depends(database.get_db)
+):
+    existing = db.query(models.GrantProgram).filter(models.GrantProgram.code == grant_data.code).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Grant programme '{grant_data.code}' already exists")
+    new_grant = models.GrantProgram(**grant_data.model_dump())
+    db.add(new_grant)
+    db.commit()
+    db.refresh(new_grant)
+    log_action(db, admin, "GRANT_CREATED", "GrantProgram", str(new_grant.id),
+               f"Created grant programme {new_grant.code}: {new_grant.title}")
+    return new_grant
+
+
+@router.patch("/grants/{grant_id}/toggle")
+def toggle_grant_program(
+    grant_id: int,
+    admin: models.User = Depends(require_admin),
+    db: Session = Depends(database.get_db)
+):
+    grant = db.query(models.GrantProgram).filter(models.GrantProgram.id == grant_id).first()
+    if not grant:
+        raise HTTPException(status_code=404, detail="Grant programme not found")
+    grant.is_active = not grant.is_active
+    db.commit()
+    log_action(db, admin, "GRANT_TOGGLED", "GrantProgram", str(grant_id),
+               f"{'Activated' if grant.is_active else 'Deactivated'} grant {grant.code}")
+    return {"message": f"Grant {grant.code} {'activated' if grant.is_active else 'deactivated'}", "is_active": grant.is_active}
+
+
 # --- Audit Log ---
 
 @router.get("/audit-log", response_model=list[schemas.AuditLogResponse])
