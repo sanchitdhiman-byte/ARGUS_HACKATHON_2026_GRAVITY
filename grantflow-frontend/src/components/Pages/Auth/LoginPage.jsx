@@ -18,7 +18,7 @@ const LoginPage = ({ onLogin, onNavigate }) => {
         localStorage.setItem('access_token', res.data.access_token);
         localStorage.setItem('refresh_token', res.data.refresh_token);
         localStorage.setItem('user', JSON.stringify(res.data.user));
-        onLogin();
+        onLogin(res.data.user);
       }
     } catch (err) {
       setError(err.response?.data?.detail || "Invalid credentials. Please try again.");
@@ -36,7 +36,7 @@ const LoginPage = ({ onLogin, onNavigate }) => {
           localStorage.setItem('access_token', res.data.access_token);
           localStorage.setItem('refresh_token', res.data.refresh_token);
           localStorage.setItem('user', JSON.stringify(res.data.user));
-          onLogin();
+          onLogin(res.data.user);
         }
       } catch (err) {
         setError("Google Login Failed");

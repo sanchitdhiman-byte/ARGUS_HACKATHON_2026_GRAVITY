@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const GlobalHeader = ({ isLoggedIn = false, currentView, onNavigate, onLogin, onLogout }) => {
+const GlobalHeader = ({ isLoggedIn = false, currentView, onNavigate, onLogin, onLogout, user }) => {
   return (
     <header className="sticky top-0 z-50 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -33,13 +33,26 @@ const GlobalHeader = ({ isLoggedIn = false, currentView, onNavigate, onLogin, on
                     }}
                     className={`text-sm font-bold transition-all hover:text-primary ${
                       currentView === (link === "Explore Grants" ? "landing" : link.toLowerCase().replace(' ', '-'))
-                        ? "text-primary border-b-2 border-primary pb-1" 
+                        ? "text-primary border-b-2 border-primary pb-1"
                         : "text-slate-600 dark:text-slate-400"
                     }`}
                   >
                     {link}
                   </button>
                 ))}
+                {user?.role === 'admin' && (
+                  <button
+                    onClick={() => onNavigate?.('admin-dashboard')}
+                    className={`flex items-center gap-1.5 text-sm font-bold transition-all hover:text-purple-600 ${
+                      currentView === 'admin-dashboard'
+                        ? "text-purple-600 border-b-2 border-purple-500 pb-1"
+                        : "text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-base">shield_person</span>
+                    Admin
+                  </button>
+                )}
               </>
             ) : (
               <>

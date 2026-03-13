@@ -19,7 +19,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
         org_name=user.org_name,
         email=user.email,
         hashed_password=hashed_pwd,
-        role=user.role,
+        role=models.RoleEnum.applicant,  # self-registration is always applicant
         google_id=user.google_id
     )
     db.add(new_user)

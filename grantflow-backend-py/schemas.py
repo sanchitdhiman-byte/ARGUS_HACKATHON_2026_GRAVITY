@@ -6,7 +6,7 @@ from datetime import datetime
 class UserBase(BaseModel):
     org_name: str
     email: EmailStr
-    role: RoleEnum
+    role: RoleEnum = RoleEnum.applicant
 
 class UserCreate(UserBase):
     password: Optional[str] = None
@@ -30,7 +30,7 @@ class ApplicationResponse(BaseModel):
     status: ApplicationStatusEnum
     grant_type: str
     org_name: str
-    requested_amount: float
+    total_requested: float
     submitted_at: datetime
     ai_score: int
     ai_summary: Optional[str] = None
@@ -80,3 +80,37 @@ class Token(BaseModel):
 
 class TokenRefreshRequest(BaseModel):
     refresh_token: str
+
+# --- Admin Schemas ---
+
+class UserAdminResponse(BaseModel):
+    id: int
+    org_name: str
+    email: str
+    role: RoleEnum
+    is_active: bool
+
+    class Config:
+        from_attributes = True
+
+class CreateStaffRequest(BaseModel):
+    org_name: str
+    email: EmailStr
+    password: str
+    role: RoleEnum
+
+class UpdateRoleRequest(BaseModel):
+    role: RoleEnum
+
+class AuditLogResponse(BaseModel):
+    id: int
+    actor_id: Optional[int] = None
+    actor_email: Optional[str] = None
+    action: str
+    object_type: str
+    object_id: Optional[str] = None
+    details: Optional[str] = None
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True

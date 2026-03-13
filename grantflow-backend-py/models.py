@@ -31,6 +31,7 @@ class User(Base):
     hashed_password = Column(String, nullable=True)
     google_id = Column(String, unique=True, index=True, nullable=True)
     role = Column(Enum(RoleEnum), default=RoleEnum.applicant)
+    is_active = Column(Boolean, default=True)
 
 class Application(Base):
     __tablename__ = "applications"
@@ -106,6 +107,17 @@ class Review(Base):
     total_score = Column(Integer, nullable=True)
     comments = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    actor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    actor_email = Column(String, nullable=True)
+    action = Column(String)          # e.g. USER_CREATED, ROLE_CHANGED, APPLICATION_APPROVED
+    object_type = Column(String)     # User, Application, etc.
+    object_id = Column(String, nullable=True)
+    details = Column(Text, nullable=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
 
 class ComplianceReport(Base):
     __tablename__ = "compliance_reports"

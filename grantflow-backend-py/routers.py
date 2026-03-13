@@ -3,8 +3,23 @@ from sqlalchemy.orm import Session
 import database, models, schemas, auth
 import time
 import json
+from datetime import datetime
 
 router = APIRouter()
+
+
+def _audit(db: Session, actor: models.User, action: str, object_type: str, object_id: str = None, details: str = None):
+    entry = models.AuditLog(
+        actor_id=actor.id,
+        actor_email=actor.email,
+        action=action,
+        object_type=object_type,
+        object_id=object_id,
+        details=details,
+        timestamp=datetime.utcnow()
+    )
+    db.add(entry)
+    db.commit()
 
 @router.post("/applications", response_model=schemas.ApplicationResponse)
 def create_application(app_comp: schemas.ApplicationCreate, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
@@ -99,6 +114,8 @@ def create_application(app_comp: schemas.ApplicationCreate, current_user: models
     db.add(new_app)
     db.commit()
     db.refresh(new_app)
+    _audit(db, current_user, "APPLICATION_SUBMITTED", "Application", str(new_app.id),
+           f"Submitted {new_app.grant_type} application {new_app.reference_id}")
     return new_app
 
 @router.get("/applications", response_model=list[schemas.ApplicationResponse])
@@ -160,6 +177,8 @@ def assign_application(app_id: int, current_user: models.User = Depends(auth.get
      
      app.status = models.ApplicationStatusEnum.assigned
      db.commit()
+     _audit(db, current_user, "APPLICATION_ASSIGNED", "Application", str(app_id),
+            f"Assigned application {app.reference_id} for review")
      return {"message": "Application assigned for review"}
 
 @router.post("/applications/{app_id}/approve")
@@ -172,6 +191,8 @@ def approve_application(app_id: int, current_user: models.User = Depends(auth.ge
      
      app.status = models.ApplicationStatusEnum.approved
      db.commit()
+     _audit(db, current_user, "APPLICATION_APPROVED", "Application", str(app_id),
+            f"Approved application {app.reference_id}")
      return {"message": "Application approved"}
 
 @router.post("/applications/{app_id}/reject")
@@ -184,4 +205,6 @@ def reject_application(app_id: int, current_user: models.User = Depends(auth.get
      
      app.status = models.ApplicationStatusEnum.rejected
      db.commit()
+     _audit(db, current_user, "APPLICATION_REJECTED", "Application", str(app_id),
+            f"Rejected application {app.reference_id}")
      return {"message": "Application rejected"}
