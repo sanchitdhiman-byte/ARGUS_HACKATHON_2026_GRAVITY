@@ -13,6 +13,7 @@ import AdminDashboard from './components/Pages/Staff/AdminDashboard';
 import EligibilityChecker from './components/Pages/EligibilityChecker/EligibilityChecker';
 import NotificationsPage from './components/Pages/Notifications/NotificationsPage';
 import ComplianceReporting from './components/Pages/Compliance/ComplianceReporting';
+import AdminDashboard from './components/Pages/Admin/AdminDashboard';
 
 function App() {
   const [view, setView] = useState('landing');
@@ -46,12 +47,15 @@ function App() {
 
   const handleLogin = (userData) => {
     setIsLoggedIn(true);
-    if (userData) setUser(userData);
-    else {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) setUser(JSON.parse(storedUser));
-    }
-    setView('landing');
+    const userObj = userData || JSON.parse(localStorage.getItem('user') || 'null');
+    setUser(userObj);
+    // Redirect to the right dashboard based on role
+    const role = userObj?.role;
+    if (role === 'admin')    setView('admin-dashboard');
+    else if (role === 'officer')   setView('officer-dashboard');
+    else if (role === 'reviewer')  setView('reviewer-workspace');
+    else if (role === 'finance')   setView('finance-dashboard');
+    else setView('landing');
   };
 
   const handleLogout = () => {
@@ -64,7 +68,7 @@ function App() {
   };
 
   const renderView = () => {
-    const commonProps = { onNavigate: navigate, isLoggedIn, onLogout: handleLogout, user };
+    const commonProps = { onNavigate: navigate, isLoggedIn, onLogout: handleLogout, user, currentView: view };
 
     switch(view) {
       case 'form':
@@ -72,7 +76,7 @@ function App() {
       case 'login':
         return <LoginPage onLogin={handleLogin} onNavigate={navigate} />;
       case 'signup':
-        return <SignUpPage onNavigate={navigate} />;
+        return <SignUpPage onNavigate={navigate} onLogin={handleLogin} />;
       case 'reset-password':
         return <PasswordResetPage onNavigate={navigate} />;
       case 'verify-email':
@@ -93,6 +97,8 @@ function App() {
         return <NotificationsPage {...commonProps} />;
       case 'compliance':
         return <ComplianceReporting {...commonProps} />;
+      case 'admin-dashboard':
+        return <AdminDashboard {...commonProps} />;
       case 'landing':
       default:
         return (

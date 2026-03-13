@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { useGoogleLogin } from '@react-oauth/google';
-import { authAPI } from '../../../services/api';
 
 const LoginPage = ({ onLogin, onNavigate }) => {
   const [email, setEmail] = useState('');
@@ -13,11 +13,13 @@ const LoginPage = ({ onLogin, onNavigate }) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await authAPI.login({ email, password });
-      localStorage.setItem('access_token', res.data.access_token);
-      localStorage.setItem('refresh_token', res.data.refresh_token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      onLogin(res.data.user);
+      const res = await axios.post('http://localhost:8000/api/v1/auth/login', { email, password });
+      if (res.status === 200) {
+        localStorage.setItem('access_token', res.data.access_token);
+        localStorage.setItem('refresh_token', res.data.refresh_token);
+        localStorage.setItem('user', JSON.stringify(res.data.user));
+        onLogin(res.data.user);
+      }
     } catch (err) {
       setError(err.response?.data?.detail || "Invalid credentials. Please try again.");
     } finally {
@@ -26,13 +28,16 @@ const LoginPage = ({ onLogin, onNavigate }) => {
   };
 
   const loginWithGoogle = useGoogleLogin({
-    onSuccess: async () => {
+    onSuccess: async (tokenResponse) => {
+      // In production you would exchange the credential string, but for hackathon mock:
       try {
-        const res = await authAPI.googleAuth({ token: "mock-google-token" });
-        localStorage.setItem('access_token', res.data.access_token);
-        localStorage.setItem('refresh_token', res.data.refresh_token);
-        localStorage.setItem('user', JSON.stringify(res.data.user));
-        onLogin(res.data.user);
+        const res = await axios.post('http://localhost:8000/api/v1/auth/google', { token: "mock-google-token" });
+        if (res.status === 200) {
+          localStorage.setItem('access_token', res.data.access_token);
+          localStorage.setItem('refresh_token', res.data.refresh_token);
+          localStorage.setItem('user', JSON.stringify(res.data.user));
+          onLogin(res.data.user);
+        }
       } catch (err) {
         setError("Google Login Failed");
       }

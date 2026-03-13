@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import GlobalHeader from '../../Core/shared/GlobalHeader';
 import FormStepper from './FormStepper';
 import OrganisationStep from './OrganisationStep';
@@ -11,14 +12,20 @@ import FormControls from './FormControls';
 import GuidanceCards from './GuidanceCards';
 import GlobalFooter from '../../Core/shared/GlobalFooter';
 import { GRANTS_DATA } from '../../../data/grants';
-import { applicationsAPI } from '../../../services/api';
 
-const ApplicationForm = ({ onNavigate, isLoggedIn, onLogout, selectedGrantType }) => {
+const ApplicationForm = ({ onNavigate, isLoggedIn, onLogout, user, selectedGrantType }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const totalSteps = 6;
   const currentGrant = selectedGrantType || 'CDG';
+
+  // Guard: must be logged in to access the form
+  useEffect(() => {
+    if (!isLoggedIn) {
+      onNavigate('login');
+    }
+  }, [isLoggedIn]);
 
   const [formData, setFormData] = useState({
     // Org
@@ -44,30 +51,31 @@ const ApplicationForm = ({ onNavigate, isLoggedIn, onLogout, selectedGrantType }
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Allow chatbot to push validated data into form state
-  const handleChatDataPush = (fieldUpdates) => {
-    setFormData(prev => ({ ...prev, ...fieldUpdates }));
+  const handleSubmitToAPI = async () => {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const token = localStorage.getItem('access_token');
+      await axios.post(
+        'http://localhost:8000/api/v1/applications',
+        { grantType: currentGrant, formData },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      onNavigate('my-applications');
+    } catch (err) {
+      setSubmitError(err.response?.data?.detail || 'Submission failed. Please try again.');
+      setCurrentStep(6);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleNext = async () => {
+  const handleNext = () => {
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      // Submit application via API
-      setSubmitting(true);
-      setSubmitError(null);
-      try {
-        const res = await applicationsAPI.create(currentGrant, formData);
-        const refId = res.data.reference_id;
-        alert(`Application submitted successfully!\nReference: ${refId}\nAI Score: ${res.data.ai_score}`);
-        onNavigate('my-applications');
-      } catch (err) {
-        const detail = err.response?.data?.detail || err.message;
-        setSubmitError(typeof detail === 'string' ? detail : 'Submission failed. Please try again.');
-      } finally {
-        setSubmitting(false);
-      }
+      handleSubmitToAPI();
     }
   };
 
@@ -79,8 +87,7 @@ const ApplicationForm = ({ onNavigate, isLoggedIn, onLogout, selectedGrantType }
   };
 
   const handleSave = () => {
-    localStorage.setItem(`draft_${currentGrant}`, JSON.stringify(formData));
-    alert("Draft saved locally!");
+    alert("Draft saved successfully!");
   };
 
   const stepProps = {
@@ -121,15 +128,14 @@ const ApplicationForm = ({ onNavigate, isLoggedIn, onLogout, selectedGrantType }
 
         <FormStepper currentStep={currentStep} totalSteps={totalSteps} grantType={currentGrant} />
         
-        {submitError && (
-          <div className="mb-6 bg-rose-500/10 border border-rose-500/50 text-rose-600 dark:text-rose-400 px-6 py-4 rounded-2xl text-sm font-bold flex items-center gap-3">
-            <span className="material-symbols-outlined">error</span>
-            {submitError}
-          </div>
-        )}
-
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {renderStep()}
+
+          {submitError && (
+            <div className="bg-rose-500/10 border border-rose-500/50 text-rose-600 dark:text-rose-400 px-4 py-3 rounded-xl text-sm font-medium">
+              {submitError}
+            </div>
+          )}
 
           <FormControls
             currentStep={currentStep}
@@ -141,7 +147,7 @@ const ApplicationForm = ({ onNavigate, isLoggedIn, onLogout, selectedGrantType }
           />
         </div>
 
-        <GuidanceCards grantType={currentGrant} onChatDataPush={handleChatDataPush} />
+        <GuidanceCards />
 
         <div className="mt-16 py-8 border-t border-slate-200 dark:border-slate-800">
           <p className="text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-8">

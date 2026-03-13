@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { useGoogleLogin } from '@react-oauth/google';
-import { authAPI } from '../../../services/api';
 
-const SignUpPage = ({ onNavigate }) => {
+const SignUpPage = ({ onNavigate, onLogin }) => {
   const [formData, setFormData] = useState({
     org_name: '',
     email: '',
@@ -22,8 +22,20 @@ const SignUpPage = ({ onNavigate }) => {
     setLoading(true);
     setError(null);
     try {
-      await authAPI.register(formData);
-      onNavigate('login');
+      await axios.post('http://localhost:8000/api/v1/auth/register', {
+        org_name: formData.org_name,
+        email: formData.email,
+        password: formData.password,
+      });
+      // Auto-login after registration
+      const loginRes = await axios.post('http://localhost:8000/api/v1/auth/login', {
+        email: formData.email,
+        password: formData.password,
+      });
+      localStorage.setItem('access_token', loginRes.data.access_token);
+      localStorage.setItem('refresh_token', loginRes.data.refresh_token);
+      localStorage.setItem('user', JSON.stringify(loginRes.data.user));
+      onLogin(loginRes.data.user);
     } catch (err) {
       setError(err.response?.data?.detail || "An error occurred during registration");
     } finally {
@@ -32,13 +44,15 @@ const SignUpPage = ({ onNavigate }) => {
   };
 
   const loginWithGoogle = useGoogleLogin({
-    onSuccess: async () => {
+    onSuccess: async (tokenResponse) => {
       try {
-        const res = await authAPI.googleAuth({ token: "mock-google-token" });
-        localStorage.setItem('access_token', res.data.access_token);
-        localStorage.setItem('refresh_token', res.data.refresh_token);
-        localStorage.setItem('user', JSON.stringify(res.data.user));
-        onNavigate('login');
+        const res = await axios.post('http://localhost:8000/api/v1/auth/google', { token: "mock-google-token" });
+        if (res.status === 200) {
+          localStorage.setItem('access_token', res.data.access_token);
+          localStorage.setItem('refresh_token', res.data.refresh_token);
+          localStorage.setItem('user', JSON.stringify(res.data.user));
+          onLogin(res.data.user);
+        }
       } catch (err) {
         setError("Google Login Failed");
       }

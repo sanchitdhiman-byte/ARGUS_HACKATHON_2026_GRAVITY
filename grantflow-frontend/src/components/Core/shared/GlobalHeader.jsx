@@ -43,13 +43,13 @@ const GlobalHeader = ({ isLoggedIn = false, currentView, onNavigate, onLogin, on
                 {user?.role === 'admin' && (
                   <button
                     onClick={() => onNavigate?.('admin-dashboard')}
-                    className={`text-sm font-bold transition-all hover:text-red-500 flex items-center gap-1 ${
+                    className={`flex items-center gap-1.5 text-sm font-bold transition-all hover:text-purple-600 ${
                       currentView === 'admin-dashboard'
-                        ? "text-red-500 border-b-2 border-red-500 pb-1"
+                        ? "text-purple-600 border-b-2 border-purple-500 pb-1"
                         : "text-slate-600 dark:text-slate-400"
                     }`}
                   >
-                    <span className="material-symbols-outlined !text-sm">shield_person</span>
+                    <span className="material-symbols-outlined text-base">shield_person</span>
                     Admin
                   </button>
                 )}
