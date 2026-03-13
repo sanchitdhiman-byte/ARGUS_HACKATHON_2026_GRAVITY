@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Hero = () => {
+const Hero = ({ onNavigate }) => {
   return (
     <section className="relative rounded-2xl sm:rounded-[2rem] overflow-hidden mb-8 sm:mb-12 bg-slate-900 group">
       {/* Background with parallax-like effect on hover */}
@@ -19,7 +19,7 @@ const Hero = () => {
       <div className="relative z-10 p-6 sm:p-12 md:p-16 lg:p-24 max-w-4xl">
         <div className="inline-block px-3 py-1 bg-primary/20 backdrop-blur-md rounded-full border border-primary/30 mb-6 group-hover:translate-x-1 transition-transform">
           <span className="text-primary font-bold text-[10px] sm:text-xs uppercase tracking-widest">
-            New Funding Cycle 2024
+            New Funding Cycle 2026
           </span>
         </div>
         
@@ -35,8 +35,11 @@ const Hero = () => {
           <button className="bg-primary px-8 py-4 rounded-xl font-black text-slate-900 text-base sm:text-lg hover:bg-primary/90 transition-all transform hover:scale-[1.03] active:scale-[0.98] shadow-lg shadow-primary/20">
             View Grant Catalog
           </button>
-          <button className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-8 py-4 rounded-xl font-bold text-base sm:text-lg hover:bg-white/20 transition-all active:scale-[0.98]">
-            Check Eligibility
+          <button 
+            onClick={() => onNavigate('eligibility-check')}
+            className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-8 py-4 rounded-xl font-bold text-base sm:text-lg hover:bg-white/20 transition-all active:scale-[0.98]"
+          >
+            Check Eligibility First
           </button>
         </div>
       </div>

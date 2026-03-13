@@ -1,6 +1,7 @@
 import React from 'react';
+import { GRANTS_DATA } from '../../../data/grants';
 
-const FormStepper = ({ currentStep = 1, totalSteps = 6 }) => {
+const FormStepper = ({ currentStep = 1, totalSteps = 6, grantType }) => {
   const steps = [
     { icon: 'corporate_fare', label: 'Organisation' },
     { icon: 'description', label: 'Project' },
@@ -10,6 +11,7 @@ const FormStepper = ({ currentStep = 1, totalSteps = 6 }) => {
     { icon: 'send', label: 'Review' },
   ];
 
+  const grant = GRANTS_DATA.find(g => g.id === grantType) || GRANTS_DATA[0];
   const progressPercentage = (currentStep / totalSteps) * 100;
 
   return (
@@ -21,16 +23,16 @@ const FormStepper = ({ currentStep = 1, totalSteps = 6 }) => {
               <li>Grant Applications</li>
               <li className="flex items-center gap-2">
                 <span className="material-symbols-outlined !text-sm">chevron_right</span>
-                <span className="text-primary">CDG-2024-0812</span>
+                <span className="text-primary">{grant.shortTitle}-2026-X89A</span>
               </li>
             </ol>
           </nav>
-          <h2 className="text-3xl font-black text-slate-900 dark:text-white">Community Development Grant</h2>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Application for local infrastructure and social cohesion programs.</p>
+          <h2 className="text-3xl font-black text-slate-900 dark:text-white">{grant.title}</h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">{grant.purpose}</p>
         </div>
         <div className="flex items-center gap-2 bg-white dark:bg-slate-800 px-4 py-2 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
           <span className="material-symbols-outlined text-primary">schedule</span>
-          <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Deadline: Oct 24, 2024</span>
+          <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Deadline: {grant.deadline}</span>
         </div>
       </div>
 
