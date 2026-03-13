@@ -1,18 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GlobalHeader from '../../Core/shared/GlobalHeader';
 import GlobalFooter from '../../Core/shared/GlobalFooter';
-
-const MOCK_ASSIGNMENTS = [
-  { id: 'APP-EIG-2024-0045', org: 'Tech for All Ed', grantType: 'EIG', dueDate: 'Nov 01, 2024', status: 'Pending Review', amount: 1200000, score: null },
-  { id: 'APP-CDG-2024-0105', org: 'Village Upliftment Society', grantType: 'CDG', dueDate: 'Nov 05, 2024', status: 'Pending Review', amount: 350000, score: null },
-  { id: 'APP-ECAG-2024-0012', org: 'Clean Rivers NGO', grantType: 'ECAG', dueDate: 'Oct 28, 2024', status: 'Reviewed', amount: 150000, score: 85 },
-];
 
 const ReviewerWorkspace = ({ onNavigate, isLoggedIn, onLogout, user }) => {
   const [filterStatus, setFilterStatus] = useState('All');
   const [selectedApp, setSelectedApp] = useState(null);
 
-  const filteredApps = MOCK_ASSIGNMENTS.filter(app => {
+  const [apps, setApps] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchApps = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const res = await fetch('http://127.0.0.1:8000/api/v1/applications', { headers });
+        if (res.ok) {
+          const data = await res.json();
+          const mapped = data
+            .filter(d => d.status === 'assigned' || d.status === 'reviewed')
+            .map(d => ({
+              id: d.reference_id,
+              internal_id: d.id, // Needed for submission
+              org: d.org_name || 'Unknown Org',
+              grantType: d.grant_type || 'CDG',
+              dueDate: 'N/A', // Mock deadline logic for UI
+              status: d.status === 'assigned' ? 'Pending Review' : 'Reviewed',
+              amount: d.requested_amount || 0,
+              score: d.status === 'reviewed' ? 85 : null, // Backend does not return existing review score right now, mocking this for UI
+              raw: d
+            }));
+          setApps(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to fetch assigned apps", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchApps();
+  }, []);
+
+  const filteredApps = apps.filter(app => {
     let match = true;
     if (filterStatus !== 'All' && app.status !== filterStatus) match = false;
     return match;
@@ -53,9 +82,9 @@ const ReviewerWorkspace = ({ onNavigate, isLoggedIn, onLogout, user }) => {
         {/* KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
            {[
-             { label: "Total Assigned", value: MOCK_ASSIGNMENTS.length, icon: "inventory", color: "text-blue-500", bg: "bg-blue-500/10" },
-             { label: "Pending Review", value: MOCK_ASSIGNMENTS.filter(a => a.status === 'Pending Review').length, icon: "pending_actions", color: "text-amber-500", bg: "bg-amber-500/10" },
-             { label: "Completed", value: MOCK_ASSIGNMENTS.filter(a => a.status === 'Reviewed').length, icon: "task_alt", color: "text-green-500", bg: "bg-green-500/10" },
+             { label: "Total Assigned", value: apps.length, icon: "inventory", color: "text-blue-500", bg: "bg-blue-500/10" },
+             { label: "Pending Review", value: apps.filter(a => a.status === 'Pending Review').length, icon: "pending_actions", color: "text-amber-500", bg: "bg-amber-500/10" },
+             { label: "Completed", value: apps.filter(a => a.status === 'Reviewed').length, icon: "task_alt", color: "text-green-500", bg: "bg-green-500/10" },
            ].map((kpi, idx) => (
              <div key={idx} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
                <div className="absolute -right-4 -top-4 w-24 h-24 bg-gradient-to-br from-transparent to-slate-100 dark:to-slate-800 rounded-full opacity-50 group-hover:scale-110 transition-transform duration-500"></div>

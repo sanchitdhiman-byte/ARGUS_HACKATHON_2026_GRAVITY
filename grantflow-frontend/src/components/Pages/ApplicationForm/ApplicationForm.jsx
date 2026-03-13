@@ -41,17 +41,47 @@ const ApplicationForm = ({ onNavigate, isLoggedIn, onLogout, selectedGrantType }
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleNext = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleNext = async () => {
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      console.log('--- SUBMITTING GRANT APPLICATION ---');
-      console.log('Grant Type:', currentGrant);
-      console.log('Payload:', JSON.stringify(formData, null, 2));
-      console.log('------------------------------------');
-      alert(`Application for ${currentGrant} submitted successfully! Check console for payload.`);
-      onNavigate('landing');
+      try {
+        setIsSubmitting(true);
+        const token = localStorage.getItem('access_token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const payload = {
+            grantType: currentGrant,
+            formData: formData
+        };
+
+        const res = await fetch('http://127.0.0.1:8000/api/v1/applications', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Failed to submit application');
+        }
+
+        const data = await res.json();
+        
+        console.log('--- SUBMITTED GRANT APPLICATION ---');
+        console.log('Response:', data);
+        alert(`Application submitted successfully! Reference ID: ${data.reference_id}`);
+        onNavigate('my-applications'); // Navigate to a success tracking page ideally
+      } catch (error) {
+        console.error("Submission Error:", error);
+        alert(`Error submitting application: ${error.message}`);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 

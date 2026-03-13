@@ -1,23 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GlobalHeader from '../../Core/shared/GlobalHeader';
 import GlobalFooter from '../../Core/shared/GlobalFooter';
-
-const MOCK_APPLICATIONS = [
-  { id: 'APP-CDG-2024-0012', org: 'Community Reach Foundation', grantType: 'CDG', date: 'Oct 12, 2024', status: 'Pending Review', aiScore: 92, amount: 450000 },
-  { id: 'APP-EIG-2024-0045', org: 'Tech for All Ed', grantType: 'EIG', date: 'Oct 14, 2024', status: 'Assigned', aiScore: 88, amount: 1200000 },
-  { id: 'APP-ECAG-2024-0089', org: 'Green Earth Action', grantType: 'ECAG', date: 'Oct 15, 2024', status: 'Pending Review', aiScore: 95, amount: 250000 },
-  { id: 'APP-CDG-2024-0102', org: 'Urban Renewal Hub', grantType: 'CDG', date: 'Oct 18, 2024', status: 'Rejected', aiScore: 40, amount: 600000 },
-  { id: 'APP-EIG-2024-0115', org: 'Future Innovators Academy', grantType: 'EIG', date: 'Oct 19, 2024', status: 'Pending Review', aiScore: 78, amount: 850000 },
-  { id: 'APP-ECAG-2024-0120', org: 'Sustainable Vistas', grantType: 'ECAG', date: 'Oct 20, 2024', status: 'Under Review', aiScore: 85, amount: 300000 },
-];
 
 const ProgramOfficerDashboard = ({ onNavigate, isLoggedIn, onLogout, user }) => {
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterGrant, setFilterGrant] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedApp, setSelectedApp] = useState(null);
+  const [apps, setApps] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredApps = MOCK_APPLICATIONS.filter(app => {
+  useEffect(() => {
+    const fetchApps = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const res = await fetch('http://127.0.0.1:8000/api/v1/applications', { headers });
+        if (res.ok) {
+          const data = await res.json();
+          // Map backend schema to what the UI expects
+          const mapped = data.map(d => ({
+            id: d.reference_id,
+            org: d.org_name || 'Unknown Org',
+            grantType: d.grant_type || 'CDG',
+            date: new Date(d.submitted_at).toLocaleDateString(),
+            status: d.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), // Quick format
+            aiScore: d.ai_score || 0,
+            amount: d.requested_amount || 0,
+            raw: d
+          }));
+          setApps(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to fetch apps", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchApps();
+  }, []);
+
+  const filteredApps = apps.filter(app => {
     let match = true;
     if (filterStatus !== 'All' && app.status !== filterStatus) match = false;
     if (filterGrant !== 'All' && app.grantType !== filterGrant) match = false;
