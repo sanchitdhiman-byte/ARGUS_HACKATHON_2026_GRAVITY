@@ -8,31 +8,54 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.security import get_current_user
 from app.core.constants import GRANT_PROGRAMMES
+from app.core.grant_metadata import GRANT_METADATA, get_required_fields, get_budget_rules
 from app.models.models import User
 from app.services.ai_agent import _call_gemini, _parse_json_response
 
 router = APIRouter(tags=["Chat"])
 
-# Field definitions per step for guided data collection
-FORM_FIELDS = {
-    "organisation": [
-        "orgName", "regNumber", "entityType", "establishedYear",
-        "budget", "contactName", "contactRole", "email", "phone",
-        "address", "city", "stateRegion", "postalCode",
-    ],
-    "project": [
-        "projectTitle", "projectLocation", "problemStatement",
-        "proposedSolution", "targetBeneficiaries",
-    ],
-    "budget": [
-        "personnel", "equipment", "travel", "overheads", "other",
-        "totalRequested", "justification",
-    ],
-    "experience": [
-        "hasPreviousGrants", "priorProjects", "priorFunder", "priorAmount",
-        "signatoryName", "designation",
-    ],
-}
+
+def _get_form_fields(grant_type: str) -> dict[str, list[str]]:
+    """Build section→fields map dynamically from grant metadata."""
+    meta = GRANT_METADATA.get(grant_type)
+    if not meta:
+        # Fallback to generic fields
+        return {
+            "organisation": [
+                "orgName", "regNumber", "entityType", "establishedYear",
+                "budget", "contactName", "contactRole", "email", "phone",
+                "address", "city", "stateRegion", "postalCode",
+            ],
+            "project": [
+                "projectTitle", "projectLocation", "problemStatement",
+                "proposedSolution", "targetBeneficiaries",
+            ],
+            "budget": [
+                "personnel", "equipment", "travel", "overheads", "other",
+                "totalRequested", "justification",
+            ],
+            "experience": [
+                "hasPreviousGrants", "priorProjects", "priorFunder", "priorAmount",
+                "signatoryName", "designation",
+            ],
+        }
+    sections = {}
+    for section in meta["sections"]:
+        sections[section["id"]] = [f["key"] for f in section["fields"]]
+    return sections
+
+
+def _get_rubric_hints(grant_type: str) -> list[str]:
+    """Extract rubric hints for use in AI prompts."""
+    meta = GRANT_METADATA.get(grant_type)
+    if not meta:
+        return []
+    hints = []
+    for section in meta["sections"]:
+        for field in section["fields"]:
+            if field.get("rubric_hint"):
+                hints.append(f"- {field['label']}: {field['rubric_hint']}")
+    return hints
 
 
 class ChatRequest(BaseModel):
@@ -65,10 +88,11 @@ def chat_intake(
         )
 
     collected = req.collected_data or {}
+    form_fields = _get_form_fields(req.grant_type)
 
     # Determine which fields are still missing
     all_fields = []
-    for section_fields in FORM_FIELDS.values():
+    for section_fields in form_fields.values():
         all_fields.extend(section_fields)
 
     filled = [f for f in all_fields if collected.get(f)]
@@ -77,16 +101,36 @@ def chat_intake(
 
     # Determine current section
     current_section = "organisation"
-    for section, fields in FORM_FIELDS.items():
+    for section, fields in form_fields.items():
         if any(f in missing for f in fields):
             current_section = section
             break
+
+    # Get rubric hints and budget rules for context
+    rubric_hints = _get_rubric_hints(req.grant_type)
+    budget_rules = get_budget_rules(req.grant_type)
+
+    # Build field label map from metadata
+    meta = GRANT_METADATA.get(req.grant_type)
+    field_labels = {}
+    if meta:
+        for section in meta["sections"]:
+            for field in section["fields"]:
+                field_labels[field["key"]] = field["label"]
 
     # Build the AI prompt
     history_text = ""
     for msg in (req.conversation_history or [])[-6:]:
         role = msg.get("role", "user")
         history_text += f"{role}: {msg.get('content', '')}\n"
+
+    rubric_section = ""
+    if rubric_hints:
+        rubric_section = f"\nScoring rubric fields (guide the applicant to provide strong answers for these):\n" + "\n".join(rubric_hints)
+
+    budget_section = ""
+    if budget_rules:
+        budget_section = f"\nBudget rules:\n- Overhead cap: {budget_rules.get('overhead_cap_pct', 15)}%\n- Funding range: INR {budget_rules.get('funding_min', 0):,} to INR {budget_rules.get('funding_max', 0):,}"
 
     prompt = f"""You are a friendly grant application assistant helping an applicant fill out a {programme['name']} ({req.grant_type}) application.
 
@@ -96,6 +140,8 @@ Programme details:
 - Funding: INR {programme['funding_min']:,} to {programme['funding_max']:,}
 - Duration: {programme['duration_min_months']}–{programme['duration_max_months']} months
 - Eligible: {', '.join(programme['eligible_org_types'])}
+{rubric_section}
+{budget_section}
 
 Data collected so far:
 {json.dumps(collected, indent=2)}
@@ -113,6 +159,8 @@ Instructions:
 2. Ask the NEXT missing question naturally
 3. If all fields are filled, congratulate them and set complete=true
 4. Keep responses concise (2-3 sentences max)
+5. For rubric-scored fields, gently guide the applicant to provide detailed, evidence-based answers
+6. If entering budget fields, remind about the overhead cap ({budget_rules.get('overhead_cap_pct', 15)}%) and funding range
 
 Return ONLY a JSON object:
 {{
@@ -144,42 +192,7 @@ Return ONLY a JSON object:
             complete=parsed.get("complete", False),
         )
 
-    # Fallback: ask for the next missing field
-    field_labels = {
-        "orgName": "your organisation's legal name",
-        "regNumber": "your organisation's registration number",
-        "entityType": "your organisation type (NGO, Trust, etc.)",
-        "establishedYear": "the year your organisation was established",
-        "budget": "your annual operating budget in INR",
-        "contactName": "the contact person's name",
-        "contactRole": "the contact person's role",
-        "email": "the contact email address",
-        "phone": "the contact phone number",
-        "address": "your organisation's address",
-        "city": "the city",
-        "stateRegion": "the state/region",
-        "postalCode": "the postal code",
-        "projectTitle": "the title of your project",
-        "projectLocation": "where the project will be implemented",
-        "problemStatement": "the problem your project addresses",
-        "proposedSolution": "your proposed solution",
-        "targetBeneficiaries": "how many beneficiaries you plan to reach",
-        "personnel": "personnel costs in INR",
-        "equipment": "equipment costs in INR",
-        "travel": "travel costs in INR",
-        "overheads": "overhead costs in INR",
-        "other": "any other costs in INR",
-        "totalRequested": "the total amount you're requesting in INR",
-        "justification": "a brief budget justification",
-        "hasPreviousGrants": "whether you've received grants before (yes/no)",
-        "priorProjects": "describe 1-2 relevant prior projects",
-        "priorFunder": "your previous funder's name",
-        "priorAmount": "the previous grant amount",
-        "signatoryName": "the authorised signatory's name",
-        "designation": "the signatory's designation",
-    }
-
-    # Try to extract data from user message for the next expected field
+    # Fallback: ask for the next missing field using metadata labels
     field_updates = {}
     if missing and req.message.strip():
         next_field = missing[0]
@@ -189,7 +202,7 @@ Return ONLY a JSON object:
 
     if missing:
         next_label = field_labels.get(missing[0], missing[0])
-        reply = f"Got it! Now, could you please tell me {next_label}?"
+        reply = f"Got it! Now, could you please tell me {next_label.lower()}?"
     else:
         reply = "All information has been collected! You can now review and submit your application."
 

@@ -242,6 +242,32 @@ class Message(Base):
     sender = relationship("User")
 
 
+# ── Grant Programmes ───────────────────────────────────────────────────
+
+class GrantProgramme(Base):
+    __tablename__ = "grant_programmes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, index=True)
+    title = Column(String)
+    short_title = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
+    purpose = Column(Text, nullable=True)
+    funding_min = Column(Float, default=0)
+    funding_max = Column(Float, default=0)
+    funding_range = Column(String, nullable=True)
+    duration_min = Column(Integer, default=6)
+    duration_max = Column(Integer, default=18)
+    eligible_types = Column(Text, nullable=True)  # JSON string e.g. '["NGO","Trust"]'
+    min_years = Column(Integer, default=0)
+    deadline = Column(String, nullable=True)
+    geographic_focus = Column(String, nullable=True)
+    total_budget = Column(String, nullable=True)
+    max_awards = Column(Integer, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 # ── Audit Log ──────────────────────────────────────────────────────────
 
 class AuditLog(Base):

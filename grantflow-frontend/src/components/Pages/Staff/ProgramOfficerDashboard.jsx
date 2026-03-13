@@ -1,95 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import GlobalHeader from '../../Core/shared/GlobalHeader';
 import GlobalFooter from '../../Core/shared/GlobalFooter';
-import { applicationsAPI, reviewsAPI } from '../../../services/api';
 
-const STATUS_MAP = {
-  screening: 'Screening',
-  pending_review: 'Pending Review',
-  assigned: 'Assigned',
-  under_review: 'Under Review',
-  reviewed: 'Reviewed',
-  risk_flagged: 'Risk Flagged',
-  approved: 'Approved',
-  rejected: 'Rejected',
-  eligible: 'Eligible',
-  ineligible: 'Ineligible',
-};
+const MOCK_APPLICATIONS = [
+  { id: 'APP-CDG-2024-0012', org: 'Community Reach Foundation', grantType: 'CDG', date: 'Oct 12, 2024', status: 'Pending Review', aiScore: 92, amount: 450000 },
+  { id: 'APP-EIG-2024-0045', org: 'Tech for All Ed', grantType: 'EIG', date: 'Oct 14, 2024', status: 'Assigned', aiScore: 88, amount: 1200000 },
+  { id: 'APP-ECAG-2024-0089', org: 'Green Earth Action', grantType: 'ECAG', date: 'Oct 15, 2024', status: 'Pending Review', aiScore: 95, amount: 250000 },
+  { id: 'APP-CDG-2024-0102', org: 'Urban Renewal Hub', grantType: 'CDG', date: 'Oct 18, 2024', status: 'Rejected', aiScore: 40, amount: 600000 },
+  { id: 'APP-EIG-2024-0115', org: 'Future Innovators Academy', grantType: 'EIG', date: 'Oct 19, 2024', status: 'Pending Review', aiScore: 78, amount: 850000 },
+  { id: 'APP-ECAG-2024-0120', org: 'Sustainable Vistas', grantType: 'ECAG', date: 'Oct 20, 2024', status: 'Under Review', aiScore: 85, amount: 300000 },
+];
 
 const ProgramOfficerDashboard = ({ onNavigate, isLoggedIn, onLogout, user }) => {
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterGrant, setFilterGrant] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedApp, setSelectedApp] = useState(null);
-  const [allApplications, setAllApplications] = useState([]);
-  const [reviewers, setReviewers] = useState([]);
-  const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [appsRes, reviewersRes] = await Promise.all([
-          applicationsAPI.list(),
-          reviewsAPI.listReviewers().catch(() => ({ data: [] })),
-        ]);
-        const mapped = appsRes.data.map(app => ({
-          id: app.reference_id,
-          dbId: app.id,
-          org: app.org_name || 'Unknown',
-          grantType: app.grant_type,
-          date: app.submitted_at ? new Date(app.submitted_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
-          status: STATUS_MAP[app.status] || app.status,
-          aiScore: app.ai_score || 0,
-          amount: app.total_requested || 0,
-          applicantId: app.applicant_id,
-        }));
-        setAllApplications(mapped);
-        setReviewers(reviewersRes.data);
-      } catch { /* empty */ }
-    };
-    fetchData();
-  }, []);
-
-  const handleAssignReviewer = async (appDbId, reviewerId) => {
-    setActionLoading(true);
-    try {
-      await reviewsAPI.assignReviewer(appDbId, reviewerId);
-      setAllApplications(prev => prev.map(a => a.dbId === appDbId ? { ...a, status: 'Assigned' } : a));
-      setSelectedApp(null);
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to assign reviewer');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleReject = async (appDbId) => {
-    setActionLoading(true);
-    try {
-      await applicationsAPI.reject(appDbId, 'Rejected by Program Officer');
-      setAllApplications(prev => prev.map(a => a.dbId === appDbId ? { ...a, status: 'Rejected' } : a));
-      setSelectedApp(null);
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to reject');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleApprove = async (appDbId) => {
-    setActionLoading(true);
-    try {
-      await applicationsAPI.approve(appDbId, 'Approved by Program Officer');
-      setAllApplications(prev => prev.map(a => a.dbId === appDbId ? { ...a, status: 'Approved' } : a));
-      setSelectedApp(null);
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to approve');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const filteredApps = allApplications.filter(app => {
+  const filteredApps = MOCK_APPLICATIONS.filter(app => {
     let match = true;
     if (filterStatus !== 'All' && app.status !== filterStatus) match = false;
     if (filterGrant !== 'All' && app.grantType !== filterGrant) match = false;
@@ -116,7 +44,7 @@ const ProgramOfficerDashboard = ({ onNavigate, isLoggedIn, onLogout, user }) => 
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-background-dark font-display flex flex-col selection:bg-primary/30">
-      <GlobalHeader currentView="staff-dash" onNavigate={onNavigate} isLoggedIn={isLoggedIn} onLogout={onLogout} user={user} />
+      <GlobalHeader currentView="staff-dash" onNavigate={onNavigate} isLoggedIn={isLoggedIn} onLogout={onLogout} />
       
       <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
@@ -307,45 +235,16 @@ const ProgramOfficerDashboard = ({ onNavigate, isLoggedIn, onLogout, user }) => 
                >
                  Close
                </button>
-               <button
-                 onClick={() => handleReject(selectedApp.dbId)}
-                 disabled={actionLoading}
-                 className="px-6 py-3 rounded-xl bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 font-bold text-sm hover:bg-red-200 transition-colors disabled:opacity-50"
+               <button 
+                 className="px-6 py-3 rounded-xl bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 font-bold text-sm hover:bg-red-200 transition-colors"
                >
                  Reject (Ineligible)
                </button>
-               {selectedApp.status === 'Reviewed' ? (
-                 <button
-                   onClick={() => handleApprove(selectedApp.dbId)}
-                   disabled={actionLoading}
-                   className="px-6 py-3 rounded-xl bg-green-500 text-white font-black text-sm hover:bg-green-600 transition-all shadow-lg active:scale-95 disabled:opacity-50"
-                 >
-                   Approve Grant
-                 </button>
-               ) : (
-                 <div className="flex items-center gap-2">
-                   {reviewers.length > 0 && (
-                     <select
-                       className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-3 rounded-xl text-sm font-bold"
-                       defaultValue=""
-                       onChange={(e) => e.target.value && handleAssignReviewer(selectedApp.dbId, parseInt(e.target.value))}
-                       disabled={actionLoading}
-                     >
-                       <option value="" disabled>Select Reviewer...</option>
-                       {reviewers.map(r => <option key={r.id} value={r.id}>{r.org_name}</option>)}
-                     </select>
-                   )}
-                   {reviewers.length === 0 && (
-                     <button
-                       onClick={() => handleAssignReviewer(selectedApp.dbId, 1)}
-                       disabled={actionLoading}
-                       className="px-6 py-3 rounded-xl bg-primary text-slate-900 font-black text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 hover:shadow-xl active:scale-95 disabled:opacity-50"
-                     >
-                       Assign Reviewers
-                     </button>
-                   )}
-                 </div>
-               )}
+               <button 
+                 className="px-6 py-3 rounded-xl bg-primary text-slate-900 font-black text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 hover:shadow-xl active:scale-95"
+               >
+                 Assign Reviewers
+               </button>
             </div>
           </div>
         </div>

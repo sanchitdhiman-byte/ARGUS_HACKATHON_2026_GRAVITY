@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 
 const GlobalHeader = ({ isLoggedIn = false, currentView, onNavigate, onLogin, onLogout, user }) => {
   return (
@@ -6,9 +7,9 @@ const GlobalHeader = ({ isLoggedIn = false, currentView, onNavigate, onLogin, on
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           {/* Logo */}
-          <div 
+          <Link 
+            to="/"
             className="flex items-center gap-3 cursor-pointer group"
-            onClick={() => onNavigate && onNavigate('landing')}
           >
             <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center transition-transform group-hover:rotate-3 shadow-lg shadow-primary/20">
               <span className="material-symbols-outlined text-slate-900 text-xl font-black">
@@ -18,56 +19,63 @@ const GlobalHeader = ({ isLoggedIn = false, currentView, onNavigate, onLogin, on
             <span className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
               GrantStream
             </span>
-          </div>
+          </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-8">
             {isLoggedIn ? (
               <>
-                {["Explore Grants", "My Applications", "Guidelines", "Support"].map((link) => (
-                  <button
-                    key={link}
-                    onClick={() => {
-                      if (link === "Explore Grants") onNavigate?.('landing');
-                      if (link === "My Applications") onNavigate?.('my-applications');
-                    }}
-                    className={`text-sm font-bold transition-all hover:text-primary ${
-                      currentView === (link === "Explore Grants" ? "landing" : link.toLowerCase().replace(' ', '-'))
+                {[
+                  { name: "Explore Grants", path: "/" },
+                  { name: "My Applications", path: "/my-applications" },
+                  { name: "Guidelines", path: "/guidelines" },
+                  { name: "Support", path: "/support" }
+                ].map((link) => (
+                  <NavLink
+                    key={link.name}
+                    to={link.path}
+                    className={({ isActive }) => `text-sm font-bold transition-all hover:text-primary ${
+                      isActive
                         ? "text-primary border-b-2 border-primary pb-1"
                         : "text-slate-600 dark:text-slate-400"
                     }`}
                   >
-                    {link}
-                  </button>
+                    {link.name}
+                  </NavLink>
                 ))}
                 {user?.role === 'admin' && (
-                  <button
-                    onClick={() => onNavigate?.('admin-dashboard')}
-                    className={`text-sm font-bold transition-all hover:text-red-500 flex items-center gap-1 ${
-                      currentView === 'admin-dashboard'
+                  <NavLink
+                    to="/admin-dashboard"
+                    className={({ isActive }) => `text-sm font-bold transition-all hover:text-red-500 flex items-center gap-1 ${
+                      isActive
                         ? "text-red-500 border-b-2 border-red-500 pb-1"
                         : "text-slate-600 dark:text-slate-400"
                     }`}
                   >
                     <span className="material-symbols-outlined !text-sm">shield_person</span>
                     Admin
-                  </button>
+                  </NavLink>
                 )}
               </>
             ) : (
               <>
-                {["Explore Grants", "Guidelines", "Support", "About"].map((link) => (
-                  <button
-                    key={link}
-                    onClick={() => link === "Explore Grants" && onNavigate?.('landing')}
-                    className={`text-sm font-bold transition-all hover:text-primary ${
-                      currentView === (link === "Explore Grants" ? "explore-grants" : link.toLowerCase().replace(' ', '-'))
+                {[
+                  { name: "Explore Grants", path: "/" },
+                  { name: "Guidelines", path: "/guidelines" },
+                  { name: "Support", path: "/support" },
+                  { name: "About", path: "/about" }
+                ].map((link) => (
+                  <NavLink
+                    key={link.name}
+                    to={link.path}
+                    className={({ isActive }) => `text-sm font-bold transition-all hover:text-primary ${
+                      isActive
                         ? "text-primary border-b-2 border-primary pb-1" 
                         : "text-slate-600 dark:text-slate-400"
                     }`}
                   >
-                    {link}
-                  </button>
+                    {link.name}
+                  </NavLink>
                 ))}
               </>
             )}
@@ -98,12 +106,12 @@ const GlobalHeader = ({ isLoggedIn = false, currentView, onNavigate, onLogin, on
                 </div>
               </>
             ) : (
-              <button 
-                onClick={() => onLogin && onLogin()}
+              <Link 
+                to="/login"
                 className="hidden sm:flex bg-primary hover:bg-primary/90 px-6 py-2.5 rounded-xl text-sm font-black transition-all shadow-lg shadow-primary/10 text-slate-900 active:scale-95"
               >
                 Sign In
-              </button>
+              </Link>
             )}
             
             <button className="lg:hidden p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-slate-600 dark:text-slate-300">

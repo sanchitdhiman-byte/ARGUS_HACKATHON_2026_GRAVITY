@@ -52,3 +52,21 @@ def list_grant_programmes():
         }
         for code, prog in GRANT_PROGRAMMES.items()
     ]
+
+
+@app.get("/api/v1/programmes/metadata")
+def get_all_programme_metadata():
+    """Public endpoint: full form metadata for all grant types (drives dynamic form engine)."""
+    from app.core.grant_metadata import GRANT_METADATA
+    return GRANT_METADATA
+
+
+@app.get("/api/v1/programmes/metadata/{grant_type}")
+def get_programme_metadata(grant_type: str):
+    """Public endpoint: form metadata for a specific grant type."""
+    from app.core.grant_metadata import GRANT_METADATA
+    gt = grant_type.upper()
+    if gt not in GRANT_METADATA:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"Grant type '{grant_type}' not found. Available: {list(GRANT_METADATA.keys())}")
+    return GRANT_METADATA[gt]

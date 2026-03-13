@@ -165,6 +165,8 @@ export const adminAPI = {
 export const publicAPI = {
   healthCheck: () => api.get('/health'),
   grantProgrammes: () => api.get('/grant-programmes'),
+  programmeMetadata: () => api.get('/programmes/metadata'),
+  programmeMetadataByType: (grantType) => api.get(`/programmes/metadata/${grantType}`),
   eligibilityCheck: (orgType, district, amount) =>
     api.post('/eligibility-check', {
       organisation_type: orgType,

@@ -17,6 +17,7 @@ from app.schemas.schemas import (
     MessageCreate, MessageResponse,
 )
 from app.core.security import get_current_user
+from app.core.grant_metadata import validate_application_fields, get_budget_rules
 from app.services.screening import run_screening, run_eligibility_precheck
 from app.services.ai_agent import generate_review_package
 from app.services.notification import (
@@ -57,8 +58,15 @@ def create_application(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    ref_id = f"APP-{app_data.grantType}-{datetime.now().year}-{int(time.time() * 1000) % 10000}X"
     fd = app_data.formData
+    grant_type = app_data.grantType
+
+    # Validate fields against grant metadata (budget rules, required fields)
+    validation_errors = validate_application_fields(grant_type, fd)
+    if validation_errors:
+        raise HTTPException(status_code=422, detail=validation_errors)
+
+    ref_id = f"APP-{grant_type}-{datetime.now().year}-{int(time.time() * 1000) % 10000}X"
     req_amt = _parse_float(fd.get("totalRequested"))
 
     new_app = Application(
