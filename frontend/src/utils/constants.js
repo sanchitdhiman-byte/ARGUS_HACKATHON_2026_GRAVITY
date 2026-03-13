@@ -1,0 +1,63 @@
+export const ROLES = {
+  PLATFORM_ADMIN: 'PLATFORM_ADMIN',
+  PROGRAM_OFFICER: 'PROGRAM_OFFICER',
+  REVIEWER: 'REVIEWER',
+  APPLICANT: 'APPLICANT',
+  FINANCE_OFFICER: 'FINANCE_OFFICER',
+};
+
+export const STATUS_COLORS = {
+  DRAFT: '#6b7280',
+  SUBMITTED: '#3b82f6',
+  UNDER_SCREENING: '#8b5cf6',
+  SCREENING_PASSED: '#10b981',
+  SCREENING_FAILED: '#ef4444',
+  UNDER_REVIEW: '#f59e0b',
+  REVIEW_COMPLETE: '#6366f1',
+  APPROVED: '#22c55e',
+  REJECTED: '#ef4444',
+  REVISIONS_REQUESTED: '#f97316',
+  AGREEMENT_PENDING: '#eab308',
+  AGREEMENT_SIGNED: '#14b8a6',
+  ACTIVE: '#22c55e',
+  DISBURSEMENT_PENDING: '#f59e0b',
+  DISBURSED: '#10b981',
+  COMPLETED: '#6b7280',
+  CLOSED: '#374151',
+  PENDING: '#f59e0b',
+  ACCEPTED: '#22c55e',
+  REVISION_REQUESTED: '#f97316',
+  IN_PROGRESS: '#3b82f6',
+  ASSIGNED: '#8b5cf6',
+};
+
+export const STATUS_LABELS = {
+  DRAFT: 'Draft',
+  SUBMITTED: 'Submitted',
+  UNDER_SCREENING: 'Under Screening',
+  SCREENING_PASSED: 'Screening Passed',
+  SCREENING_FAILED: 'Screening Failed',
+  UNDER_REVIEW: 'Under Review',
+  REVIEW_COMPLETE: 'Review Complete',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+  REVISIONS_REQUESTED: 'Revisions Requested',
+  AGREEMENT_PENDING: 'Agreement Pending',
+  AGREEMENT_SIGNED: 'Agreement Signed',
+  ACTIVE: 'Active',
+  DISBURSEMENT_PENDING: 'Disbursement Pending',
+  DISBURSED: 'Disbursed',
+  COMPLETED: 'Completed',
+  CLOSED: 'Closed',
+  PENDING: 'Pending',
+  ACCEPTED: 'Accepted',
+  REVISION_REQUESTED: 'Revision Requested',
+  IN_PROGRESS: 'In Progress',
+  ASSIGNED: 'Assigned',
+};
+
+export const PROGRAMME_LABELS = {
+  CDG: 'Community Development Grant',
+  EIG: 'Enterprise Innovation Grant',
+  ECAG: 'Education & Capacity Building Grant',
+};
