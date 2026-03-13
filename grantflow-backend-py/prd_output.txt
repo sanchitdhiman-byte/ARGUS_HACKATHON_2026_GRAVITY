@@ -1,0 +1,826 @@
+ARGUSOFT HACKATHON SERIES
+GrantFlow
+Grant Lifecycle Management Platform
+Product Requirements Document
+4-Person Team | 8-Hour Sprint
+Internal — Argusoft
+1. Overview & Purpose
+You are building GrantFlow — an end-to-end Grant Lifecycle Management Platform. The platform
+serves a single grant-making organisation that runs multiple grant programmes and manages the full
+journey from application intake through to final compliance reporting and fund disbursement.
+The platform serves two types of users:
+• Internal Staff — Program Officers, Reviewers, Finance Officers — who manage the grant
+lifecycle end to end.
+• External Applicants — NGOs, institutions — who apply for grants, track their application status,
+and submit compliance reports.
+What Makes This Platform Distinctive
+GrantFlow is not a form-collection tool. It is an intelligent platform where an Agentic AI layer actively
+performs meaningful work at critical stages of the lifecycle, reducing manual effort and improving
+decision quality. The AI assists in three primary areas:
+• When an applicant submits — the platform automatically analyses the application for eligibility
+and narrative quality, producing a structured screening report for the Program Officer.
+• When a reviewer opens an application — the platform has already read and analysed the full
+application, producing a summary, suggested scores, and risk flags before the human reviewer
+starts work.
+• When a grantee submits a progress report — the platform automatically compares the report
+against the approved application, checks financial consistency, and flags anomalies for review.
+• When an applicant is filling out an application — the platform offers an AI-guided conversational
+mode that walks the applicant through every question instead of presenting a static form.
+AI Boundaries
+The AI must never take final decisions. Every AI output is a recommendation for a human to
+confirm, modify, or override. AI must not send communications directly to applicants, and must
+not initiate or approve disbursements. Human accountability is preserved at every decision point.
+2. User Roles & Permissions
+Role Who They Are Key Permissions
+Platform Admin IT/ops lead of the
+grant-making organisation
+Full system access; configure programmes,
+user accounts, and templates
+Program Officer Day-to-day grants operations
+staff
+View all applications; manage screening
+outcomes; send communications; manage
+compliance; set award decisions
+Grant Reviewer Subject-matter expert
+assigned to review
+applications
+View assigned applications only; enter review
+scores; view AI review analysis
+Finance Officer Finance department staff Manage disbursements; upload payment
+confirmations; view fund utilisation; verify
+expenditure records
+Applicant NGO or institution applying for
+a grant
+Submit applications; track own application
+status; submit progress and final reports;
+communicate with Program Officer
+3. Grant Programme Catalogue
+The platform ships with three pre-configured grant types. Eligibility rules, scoring rubrics, document
+checklists, and workflow stages are defined in this section. Teams should not design their own grant
+types.
+ GRANT TYPE 1 Community Development Grant (CDG)
+Programme Summary
+Attribute Value
+Purpose Fund community-level infrastructure and social service projects
+Funding Range INR 2,00,000 – INR 20,00,000 per grant
+Project Duration 6 to 18 months
+Eligible Applicants Registered NGOs, Trusts, Section 8 Companies with minimum 2 years of
+operation
+Geographic Focus Rural and semi-urban areas in India
+Annual Cycle Applications open April 1 – June 30 each year
+Maximum Awards / Cycle 10 grants
+Total Programme Budget INR 2 Crore per cycle
+CDG Application Form — All Fields
+The following fields must be collected in the CDG application. Both the manual wizard mode and the AI
+chatbot mode collect exactly these fields.
+Section Fields
+Organisation Legal Name of Organisation
+Organisation Registration Number
+Organisation Type of Organisation
+Organisation Year of Establishment
+Organisation District & State
+Organisation Contact Person Name
+Organisation Contact Email
+Organisation Contact Phone
+Organisation Annual Operating Budget (INR)
+Project Project Title
+Project Project Location (District, State)
+Project Project Type
+Section Fields
+Project Problem Statement
+Project Proposed Solution
+Project Target Beneficiaries (number)
+Project Beneficiary Demographics
+Project Project Start Date
+Project Project End Date
+Project Key Activities (list)
+Project Expected Outcomes
+Budget Total Amount Requested (INR)
+Budget Personnel Costs (INR)
+Budget Equipment & Materials (INR)
+Budget Travel & Logistics (INR)
+Budget Overheads (INR)
+Budget Other (INR)
+Budget Budget Justification
+Experience Relevant Prior Projects (describe 2)
+Experience Has org received grants before?
+Experience If yes — prior funder name and amount
+Declaration Authorised Signatory Name
+Declaration Designation
+Declaration Date of Submission
+CDG Required Documents
+Document Notes
+Registration Certificate Certificate of Registration / Trust Deed / MOA-AOA
+FCRA Certificate (if applicable) Only if foreign funds received previously
+80G / 12A Tax Certificate Tax exemption proof
+Last 2 Years Audited Financial
+Statements
+Signed by registered CA
+Project Budget Breakdown Detailed line-item budget matching form totals
+Board Resolution authorising
+application
+Signed by Chairperson
+Photographs of target community
+/ site
+Evidence of problem statement
+CDG Eligibility Criteria
+# Criterion Rule
+E1 Organisation Type Must be NGO, Trust, or Section 8 Company
+E2 Minimum Age Year of establishment <= current year – 2
+E3 Geographic Focus Project location must be in a rural/semi-urban district (lookup table)
+E4 Funding Range Amount requested between INR 2L and INR 20L
+E5 Project Duration End date – start date between 6 and 18 months
+E6 Budget Overhead Overhead line <= 15% of total requested amount
+E7 Budget Total Sum of all budget lines must equal total amount requested (+/– INR
+500)
+E8 Thematic Alignment (AI) Project description must align to community development themes —
+AI score >= 60% Flag to Suitable User
+E9 Beneficiary Count (AI) Must be > 0 and reasonable for budget — AI check: cost per
+beneficiary < INR 50,000 Flag to Suitable User
+CDG Scoring Rubric
+Dimension Weight What Scores 5 What Scores 1
+Community Need &
+Problem Clarity
+25% Clear evidence of need,
+backed by data, local context
+well described
+Vague problem, no evidence,
+generic
+Project Design &
+Feasibility
+25% Detailed, realistic activities,
+clear timeline, logical flow
+No clear plan, unrealistic
+timeline
+Organisation Track
+Record
+20% 2+ similar projects delivered,
+clear team roles, credible
+history
+No prior experience, team
+unclear
+Expected Impact &
+Outcomes
+20% Specific, measurable,
+realistic outcomes with clear
+beneficiary count
+Vague outcomes, no
+numbers
+Budget Realism 10% Each line justified,
+cost-effective, overhead
+within limit
+Inflated or unexplained costs
+CDG Workflow Stages
+Stage Who Acts SLA (Working
+Days)
+Status Labels
+1. Submitted System (auto) Instant Submitted
+2. Eligibility
+Screening
+AI Agent (auto) 1 day Screening / Eligible / Ineligible
+3. Under Review Grant Reviewer 7 days Under Review / Review Complete
+Stage Who Acts SLA (Working
+Days)
+Status Labels
+4. Award
+Decision
+Program Officer 3 days Approved / Rejected / Waitlisted
+5. Agreement
+Sent
+System (auto) 1 day Agreement Sent / Agreement
+Acknowledged
+6. Active Grant Finance Officer Ongoing Active
+7. Reporting Applicant / Program
+Officer
+Per schedule Report Due / Submitted / Reviewed
+8. Closed Program Officer On final report
+approval
+Closed
+ GRANT TYPE 2 Education Innovation Grant (EIG)
+Programme Summary
+Attribute Value
+Purpose Fund technology-enabled or pedagogy-innovation projects improving
+learning outcomes in government schools
+Funding Range INR 5,00,000 – INR 50,00,000 per grant
+Project Duration 12 to 24 months
+Eligible Applicants NGOs, EdTech non-profits, Research institutions, Universities (public
+or private)
+Geographic Focus Any state in India; preference for aspirational districts
+Annual Cycle Rolling applications — reviewed quarterly (Jan, Apr, Jul, Oct)
+Maximum Awards / Cycle 5 grants per quarter
+Total Programme Budget INR 5 Crore per year
+EIG Application Form — All Fields
+Section Field Label
+Organisation Legal Name
+Organisation Registration Number
+Organisation Organisation Type
+Organisation Year of Establishment
+Organisation State of Registration
+Organisation Primary Contact Name
+Organisation Primary Contact Email
+Organisation Primary Contact Phone
+Innovation Project Title
+Innovation Innovation Type
+Innovation Problem Being Solved
+Innovation Innovation Description
+Innovation Target Schools & Districts
+Innovation Number of Schools Targeted
+Innovation Number of Students to Benefit
+Innovation Grade Levels Targeted
+Innovation Technology Tools / Platform Used (if any)
+Innovation Evidence Base (cite any research)
+Section Field Label
+Team Project Lead Name & Qualification
+Team Team Size
+Team Team Expertise Description
+Team Key Partners (if any)
+Impact Primary Learning Outcome Targeted
+Impact Measurement Plan
+Impact Baseline Assessment Plan
+Timeline Project Start Date
+Timeline Project End Date
+Timeline Key Milestones (list 3–6)
+Budget Total Requested (INR)
+Budget Personnel Costs (INR)
+Budget Technology / Software (INR)
+Budget Training & Workshops (INR)
+Budget Content Development (INR)
+Budget Overheads (INR)
+Budget Other Costs (INR)
+Budget Budget Justification
+Declaration Authorised Signatory Name & Designation
+Declaration Date
+EIG Required Documents
+Document Notes
+Registration / Incorporation Certificate —
+Last 2 Years Audited Financials Signed by registered CA
+Proof of prior education project
+(report or case study)
+Mandatory for NGOs / EdTechs; optional for
+universities
+School Partnership Letters (min 2) MoU or letter of intent from target schools /
+district education office
+Team CVs (Project Lead + 2 key
+members)
+1-page CV format
+Detailed Budget with Breakdown Line-item detail
+Product Demo / Prototype (if
+technology-based)
+Screenshots, demo video link, or working URL
+EIG Eligibility Criteria
+# Criterion Rule
+E1 Organisation Type NGO / EdTech Non-profit / Research
+Institution / University only
+E2 Minimum Operation
+Period
+Established >= 1 year ago
+E3 Funding Range Amount between INR 5L and INR 50L
+E4 Project Duration 12–24 months
+E5 Schools Targeted Minimum 5 schools
+E6 Grade Coverage Must target at least one grade level
+selected
+E7 Budget Overhead Cap Overheads <= 15% of total
+E8 Budget Total Match Budget lines must sum to requested
+total (+/– INR 500)
+E9 Education Theme
+Alignment (AI)
+AI NLP score for education innovation
+alignment >= 65% // Flag to Suitable
+User
+E1
+0
+Impact Measurement
+Plan (AI)
+AI checks whether a measurable plan
+with indicators exists — flags if vague //
+Flag to Suitable User
+EIG Scoring Rubric
+Dimension Weight Scoring Guidance
+Innovation & Novelty 25% 5 = Demonstrably new approach with evidence base; 1 =
+Same as existing programs, no differentiation
+Educational Impact Potential 25% 5 = Clear, measurable impact on learning outcomes with
+strong measurement plan; 1 = Vague outcomes
+Team & Organisational
+Capacity
+20% 5 = Expert team with proven education sector delivery; 1 =
+No relevant experience
+Scalability & Sustainability 15% 5 = Clear plan to scale beyond grant period; 1 = No plan
+post-grant
+Budget Efficiency 15% 5 = Cost per student < INR 500 and all lines justified; 1 =
+High cost, unjustified lines
+EIG Workflow Stages
+Stage Who Acts SLA Status Labels
+1. Submitted System Instant Submitted
+2. Eligibility
+Screening
+AI Agent 1 day Screening / Eligible / Ineligible
+Stage Who Acts SLA Status Labels
+3. Under Review Grant Reviewer (2
+reviewers assigned)
+10 days Under Review / Review Complete
+4. Award Decision Program Officer 5 days Approved / Rejected / Waitlisted
+5. Agreement Sent System 1 day Agreement Sent / Acknowledged
+6. Active Grant —
+Milestone Tracking
+Finance + Program
+Officer
+Per milestones Active
+7. Quarterly
+Reporting
+Applicant / Program
+Officer
+Quarterly Report Due / Submitted /
+Reviewed
+8. Closed Program Officer On final report Closed
+ GRANT TYPE 3 Environment & Climate Action Grant (ECAG)
+Programme Summary
+Attribute Value
+Purpose Fund grassroots environmental conservation, climate resilience, and
+clean energy access projects
+Funding Range INR 3,00,000 – INR 30,00,000 per grant
+Project Duration 6 to 24 months
+Eligible Applicants NGOs, Farmer Producer Organisations (FPOs), Panchayat bodies,
+Research institutions
+Geographic Focus India — priority given to climate-vulnerable districts (coastal,
+drought-prone, flood-prone, hill regions)
+Annual Cycle Applications open twice yearly: Jan 1–Feb 28 and Jul 1–Aug 31
+Maximum Awards / Cycle 15 grants per window
+Total Programme Budget INR 3 Crore per year
+ECAG Application Form — All Fields
+Section Field Label
+Organisation Legal Name
+Organisation Registration Type
+Organisation Registration Number
+Organisation Year Established
+Organisation District & State
+Organisation Contact Person
+Organisation Contact Email
+Organisation Contact Phone
+Environment Project Title
+Environment Thematic Area
+Environment Environmental Problem
+Description
+Environment Proposed Intervention
+Environment Geographic Coverage
+(hectares / villages / km
+coastline)
+Environment Direct Beneficiaries
+(number)
+Section Field Label
+Environment Community Involvement
+Plan
+Environment Environmental Indicators
+(list 3–5 measurable
+indicators)
+Environment Climate Vulnerability Context
+Environment Risk of Not Acting
+Team Project Lead Name &
+Expertise
+Team Team Description
+Team Government / Institutional
+Partnerships
+Timeline Start Date
+Timeline End Date
+Timeline Activity Plan (month-wise for
+first 6 months)
+Budget Total Requested (INR)
+Budget Community Engagement &
+Wages (INR)
+Budget Equipment & Tools (INR)
+Budget Saplings / Seeds / Materials
+(INR)
+Budget Technical Expertise /
+Consultants (INR)
+Budget Overheads (INR)
+Budget Other (INR)
+Budget Budget Justification
+Declaration Authorised Signatory Name
+& Designation
+Declaration Date
+ECAG Required Documents
+Document Notes
+Registration Certificate —
+Last 2 Years Audited Financials Signed by CA
+Land / Site Permission Letter From relevant authority — Gram Panchayat /
+Forest Dept / CRZ authority
+Document Notes
+Community Consent
+Documentation
+Gram Sabha resolution or community meeting
+minutes
+Environmental Baseline Data
+(photos, reports)
+Site photos, existing environmental assessment
+Detailed Budget Breakdown Line-item with quantities and unit rates
+Prior environmental project report Optional but strongly recommended
+ECAG Eligibility Criteria
+# Criterion Rule
+E1 Organisation Type NGO / FPO / Panchayat / Research
+Institution only
+E2 Funding Range INR 3L – INR 30L
+E3 Duration 6–24 months
+E4 Budget Overhead Cap Overheads <= 15% of total
+E5 Budget Total Match Budget lines sum to requested total
+(+/– INR 500)
+E6 Geographic Priority
+Check (AI)
+Project location checked against
+climate-vulnerable district list —
+non-priority flagged but not rejected
+E7 Environmental Theme
+Alignment (AI)
+AI score for environmental / climate
+themes >= 60% Flag to Suitable User
+E8 Community Involvement
+(AI)
+AI checks community involvement plan
+exists and is substantive Flag to
+Suitable User
+ECAG Scoring Rubric
+Dimension Weigh
+t
+Scoring Guidance
+Environmental Impact &
+Urgency
+30% 5 = High urgency, large-scale verified impact on ecosystem;
+1 = Low urgency, minimal impact
+Community Ownership &
+Inclusion
+25% 5 = Deep community co-design, beneficiaries are
+implementers; 1 = Top-down, community passive
+Technical Soundness 20% 5 = Scientifically valid approach, indicators measurable; 1 =
+No evidence basis, vague indicators
+Organisation & Team
+Capacity
+15% 5 = Proven track record in environment sector; 1 = No
+relevant experience
+Budget Realism &
+Sustainability
+10% 5 = Lean budget, community contribution included, sustains
+post-grant; 1 = Expensive, no sustainability
+ECAG Workflow Stages
+Stage Who Acts SLA Status Labels
+1. Submitted System Instant Submitted
+2. Eligibility Screening AI Agent 1 day Screening / Eligible / Ineligible
+3. Under Review Grant Reviewer 7 days Under Review / Review
+Complete
+4. Award Decision Program Officer 3 days Approved / Rejected / Waitlisted
+5. Agreement Sent System 1 day Agreement Sent / Acknowledged
+6. Active Grant Finance Officer Ongoing Active
+7. Reporting Applicant / Program
+Officer
+At 6 months +
+end
+Report Due / Submitted /
+Reviewed
+8. Closed Program Officer On final report Closed
+Module 1 Grant Programme Catalogue
+Displays and manages the three pre-configured grant programmes available for applicants and staff to
+browse.
+Scenarios & Functional Requirements
+1.1 Public Grant Discovery
+• Any visitor (logged in or not) should be able to view a public-facing page listing all active grant
+programmes.
+• Each programme listing must display: name, purpose summary, funding range, project duration
+range, application deadline, and eligibility highlights.
+• Clicking a programme should show a full detail page with all programme attributes.
+1.2 Eligibility Pre-Check (No Login Required)
+• Any visitor should be able to run a quick eligibility check without registering.
+• The pre-check collects: organisation type, project district, and funding amount requested.
+• The system evaluates hard eligibility rules only and returns a "Likely Eligible / Likely Not Eligible"
+result for each grant programme, with the specific reason for any ineligibility.
+1.3 Personalised Eligibility Banner (Logged-in Applicants)
+• After login, applicants should see a personalised eligibility banner based on their saved
+organisation profile — showing which programmes they are likely eligible for without needing to
+re-enter information.
+Module 2 Applicant Portal & Application Intake
+Enables applicant registration, organisation profiling, document management, and dual-mode
+application submission.
+Scenarios & Functional Requirements
+2.1 Applicant Registration
+• New applicants must be able to self-register with: full name, organisation name, email,
+password, and phone number.
+• Email OTP verification is required before the account is activated.
+• After login, applicants complete an Organisation Profile covering: organisation name,
+registration number, type, state, annual budget, and contact person. This profile pre-fills fields
+across all applications.
+2.2 Document Vault
+• Applicants must be able to upload standing documents once (Registration Certificate, Audited
+Financials, 80G Certificate) to a personal document vault.
+• These documents must be automatically attached to new applications and visible for re-use or
+replacement.
+2.3 Dual-Mode Application
+• The manual wizard presents the application with the following sections: Organisation, Project,
+Team, Budget, Documents, Review & Submit.
+• Each step validates fields on the "Next" click.
+• A running total is displayed for the budget section.
+• The applicant must confirm a declaration before submitting.
+• As an alternative to the wizard, applicants should be able to apply through a conversational AI
+interface. The AI interface should have functionality similar to the manual wizard.
+AI Chatbot Scope
+The AI chatbot is a guided data-collection interface. It asks questions and records what the
+applicant provides. It does not write or suggest content for the applicant's answers.
+2.4 Document Upload
+• Each grant type has a specific document checklist.
+2.5 Application Submission & Dashboard
+• The Applicant Dashboard shows all applications with: status pill, current workflow stage, and
+last updated timestamp.
+• Applicants must be able to see a stage timeline indicating which stage their application is at and
+what comes next.
+• A Messages tab shows all communications from the Program Officer, Applicants can reply via
+the portal.
+• For active grants, a Reports tab provides the report submission interface.
+Module 3 Eligibility Screening
+Automatically checks submitted applications against eligibility rules and produces a structured
+screening report for Program Officer review.
+Scenarios & Functional Requirements
+3.1 Hard Rule Checks
+• The system must evaluate all eligibility rules for the relevant grant type (as defined in Section 3
+of this document for each grant type).
+• Each check result (pass or fail) must be individually recorded and displayed in the screening
+report.
+3.2 Human Validation
+• Soft Check 1 — Thematic Alignment: The system must analyse the project title, problem
+statement, and proposed solution text. Relevant applications must be soft-flagged for human
+validation.
+• Soft Check 2 — Narrative Quality: The system must assess the problem statement, proposed
+solution, and expected outcomes for: logical coherence between problem → solution →
+outcomes; specificity of the beneficiary description; and presence of at least one measurable
+outcome indicator. Relevant applications must be soft-flagged for human validation.
+• Soft flags are advisory — the Program Officer decides what action to take.
+3.3 Screening Report
+• The system must generate a structured screening report after all checks are complete.
+• The report must be presented to the Program Officer.
+3.4 Program Officer Review of Screening
+• Program Officers must be able to review the screening report and take one of three actions:
+Confirm Eligible (advance to review queue), Override to Ineligible (written reason required), or
+Send Clarification Request to applicant.
+• Clarification requests: the Officer selects which flag to address, types a question, and the
+system sends it to the applicant via the messaging system. The applicant's response is attached
+to the application record.
+Module 4 Application Review & Scoring
+Enables reviewer assignment and structured application review, supported by AI-generated summaries,
+scores, and risk flags.
+Scenarios & Functional Requirements
+4.1 Reviewer Assignment
+• Program Officers must be able to assign reviewers to eligible applications from a list of available
+staff with the Reviewer role.
+• The system must enforce a conflict-of-interest rule: a reviewer whose email domain matches the
+applicant's email domain cannot be assigned.
+• CDG and ECAG applications require one reviewer; EIG applications require two reviewers.
+4.2 AI-Generated Review Package
+• Before a reviewer opens an application, the system must automatically generate a Review
+Package containing three components:
+◦ Application Summary: A structured one-page summary covering who is applying, what they
+want to do, where, for how many beneficiaries, for how long, and how much — allowing the
+reviewer to understand the full application in approximately two minutes.
+◦ AI-Suggested Scores: For each scoring dimension defined in the grant type's rubric, the
+system must produce: a suggested score (1–5), a written justification (citing specific text
+from the application), and a reference to which section of the application the justification
+draws from.
+◦ Risk Flags: The system must scan the application for five categories of risk — (1) budget
+anomalies where a single line exceeds 60% of the total, (2) unrealistic timelines given the
+scope of activities, (3) vague or unmeasurable outcomes, (4) team size appearing
+insufficient for the project scope, (5) prior grant history indicating incomplete projects. Each
+flag must have a severity level: High / Medium / Low.
+• All AI scores must be clearly labelled as "AI Suggested" throughout the interface.
+4.3 Reviewer Workspace
+• The reviewer workspace must display: application content with document download links, the AI
+Review Package (summary, suggested scores, risk flags), and a scoring sheet.
+• The scoring sheet must show each rubric dimension with the AI-suggested score. The reviewer
+must confirm or override each score.
+• If a reviewer overrides an AI-suggested score, a written comment is mandatory.
+• Reviewers must be able to highlight text in the application and attach a note to it.
+• Scores must auto-save so reviewers can return and continue.
+• Once all dimensions are scored, the reviewer submits the review.
+4.4 Program Officer Post-Review View
+• All reviewed applications must appear in a Program Officer queue showing: composite score,
+individual dimension scores, reviewer identity, and risk flags.
+• The Officer must be able to sort and filter by score, grant type, reviewer, and date.
+• The Officer sets a final decision for each application: Approve / Reject / Waitlist, with a
+mandatory written reason.
+• The decision must be recorded and automatically trigger the next workflow stage.
+Module 5 Grant Award & Agreement Management
+Manages award notifications, grant agreement generation, and disbursement schedule configuration.
+Scenarios & Functional Requirements
+5.1 Award, Rejection & Waitlist Notifications
+• On a decision of Approve: the system generates an Award Letter from the defined template and
+presents it to the Program Officer for review before sending.
+• On a decision of Reject: the system generates a Rejection Letter from the defined template with
+the stated reason. The Officer reviews before sending.
+• On Waitlist: the system sends a Waitlist Notification. No further action until a slot opens.
+• All letters must use the merge field templates defined below.
+5.2 Grant Agreement Generation
+• Program Officers must be able to generate a Grant Agreement for approved applications by
+clicking a "Generate Agreement" action.
+• The system must auto-populate the agreement with data from the application and applicant
+profile: grantee legal name, registration number, address, grant reference number, programme
+name, award date, project title, project description, grant amount, disbursement schedule,
+reporting schedule, and any special conditions entered by the Officer.
+• The Officer reviews the populated agreement and sends it to the grantee as a PDF.
+• The grantee acknowledges the agreement via a link in their portal — the acknowledgement is
+recorded with a timestamp.
+5.3 Disbursement Schedule Configuration
+• During agreement generation, the Program Officer configures disbursement tranches.
+Supported types:
+◦ Inception Tranche — released on agreement acknowledgement (used for CDG and ECAG).
+◦ Mid-Project Tranche — released when the 6-month report is approved by the Program
+Officer.
+◦ Final Tranche — released when the final report is approved and accepted.
+◦ Milestone-based Tranche — released on approval of a specific deliverable (used for EIG).
+• Each tranche must have: a label, an amount (INR), a trigger condition, and a status (Pending /
+Ready / Disbursed).
+• Finance Officers must be able to add and view bank details for the grantee (account number,
+IFSC, beneficiary name). This information must be accessible only to the Finance Officer role.
+Document Templates
+The following three templates must be implemented exactly as defined. Platform Admin can edit the
+text body; merge field structure is fixed.
+Template 1 — Award Letter Merge Fields
+{{award_date}} | {{grant_reference}} | {{grantee_authorised_signatory}} |
+{{grantee_organisation_name}} | {{grantee_address}} | {{programme_name}} |
+{{application_reference}} | {{project_title}} | {{award_amount}} | {{start_date}} | {{end_date}} |
+{{program_officer_email}} | {{program_officer_name}} | {{program_officer_designation}} |
+{{organisation_name}}
+Template 2 — Rejection Letter Merge Fields
+{{decision_date}} | {{grant_reference}} | {{grantee_contact_name}} | {{grantee_organisation_name}}
+| {{programme_name}} | {{application_reference}} | {{rejection_reasons}} | {{program_officer_email}}
+| {{program_officer_name}} | {{program_officer_designation}} | {{organisation_name}}
+Template 3 — Grant Agreement Merge Fields
+{{agreement_date}} | {{grantor_organisation_name}} | {{grantor_address}} |
+{{grantee_organisation_name}} | {{grantee_org_type}} | {{grantee_registration_number}} |
+{{grantee_address}} | {{project_title}} | {{project_location}} | {{programme_name}} |
+{{grant_reference}} | {{award_amount}} | {{award_amount_words}} | {{tranche1_amount}} |
+{{tranche2_amount}} | {{tranche3_amount}} | {{start_date}} | {{end_date}} | {{reporting_schedule}} |
+{{special_conditions}} | {{program_officer_name}}
+Module 6 Compliance Reporting & Fund Utilisation
+Manages grantee progress and final report submission, AI-assisted compliance analysis, and fund
+utilisation tracking.
+Reporting Schedule
+Grant Type Reports Required Due Dates
+CDG 1 x 6-Month Progress Report, 1 x Final
+Report
+Month 6 from start date; within
+30 days of end date
+EIG 3 x Quarterly Reports, 1 x Mid-Project
+Report (month 12), 1 x Final Report
+End of each quarter; month 12;
+within 30 days of end date
+ECAG (6–12 months) 1 x Mid-Point Report, 1 x Final Report Midpoint; within 30 days of end
+date
+ECAG (13–24 months) 1 x 6-Month Report, 1 x 12-Month
+Report, 1 x Final Report
+Month 6; month 12; within 30
+days of end date
+Scenarios & Functional Requirements
+6.1 Report Submission
+• Grantees must be able to submit reports via their portal (My Grants → Submit Report) using the
+static templates defined below.
+• All reports must use the progress report template. Final reports include additional sections.
+Progress Report Template Fields
+Field Guidance
+Activities completed this
+period
+Min 100 words. List each activity and what was achieved.
+Activities planned but
+not completed (with
+reason)
+Explain any delays or deviations from original plan.
+Activities planned for
+next period
+Min 50 words
+Number of beneficiaries
+reached (cumulative)
+Cumulative count
+Beneficiary
+disaggregation: Male /
+Female / Other
+Progress on each
+stated outcome
+Min 100 words. Reference outcomes from application.
+Key challenges and
+how addressed
+Min 50 words
+Total expenditure this
+period (INR)
+Cumulative expenditure
+to date (INR)
+Running total
+Field Guidance
+Expenditure by budget
+line (table)
+Approved budget, spent this period, cumulative spent per
+line
+Variance explanation
+(lines with >10%
+deviation)
+Plans for next reporting
+period
+Min 50 words
+Support needed from
+Program Officer
+Optional
+Evidence attachments Max 10 files
+Final Report Additional Fields
+Field Guidance
+Overall project achievement vs
+objectives
+Compare planned to achieved — min 200 words
+Total beneficiaries reached (final,
+with disaggregation)
+Final cumulative count
+Key outcomes achieved Each outcome: achieved / partially / not achieved
+with explanation
+Lessons learned What worked, what did not, what would you do
+differently — min 100 words
+Sustainability plan How outcomes continue after the grant ends
+Final financial statement Final reconciliation of all expenditure vs approved
+budget + signed statement
+Auditor Certificate (if grant > INR
+10 lakh)
+Signed utilisation certificate from registered CA
+Project photos (final state) Photos showing project outcomes
+6.2 AI Compliance Analysis
+• When a report is submitted, the system must automatically analyse it and prepare a compliance
+analysis for the Program Officer — no manual trigger required.
+• The content analysis must evaluate: whether activities described are consistent with what was
+approved in the application; whether beneficiary progress is on track relative to the project
+timeline; whether the narrative acknowledges any significant deviation from the plan; and
+whether the report appears to be balanced (i.e., acknowledges challenges rather than being
+entirely positive).
+• The financial analysis must verify: arithmetic consistency between period expenditure,
+cumulative expenditure, and line-item totals; any budget line where cumulative spend deviates
+more than 10% from the approved budget; whether a variance explanation exists for each
+deviated line; and underspend alerting — if cumulative spend is below 30% of total budget at
+50% or more of the project timeline.
+• The analysis must produce an overall content quality rating (Satisfactory / Needs Clarification /
+Concerns Found), a list of specific flags with field references, and a recommended action.
+6.3 Program Officer Report Review
+• Actions: Approve Report / Request Clarification / Flag for Compliance Action.
+• Approving a report must automatically trigger any milestone-linked disbursement tranche.
+• Compliance Action flags must have a severity level: Warning / Disbursement Hold. A
+Disbursement Hold must notify the Finance Officer.
+6.4 Fund Utilisation Dashboard
+• Per-grant view: budget vs actuals bar chart by budget line; running burn chart over the project
+timeline; disbursement history table (tranche, amount, date, status).
+• Grantees submit individual expenditure records: date, payee, amount, budget category,
+description, receipt upload.
+• Finance Officers review submitted records and mark as Verified or Queried.
+• Programme-level view: total committed across all active grants; total disbursed; total reported
+expenditure; grant count by status.
+• Finance Officers must be able to export any view as CSV or PDF.
+Module 7 Notifications & Communications
+Manages automated event-driven notifications and in-app messaging between staff and applicants.
+7.1 Automated Notification Events (In-App)
+Trigger Event Recipient Content
+Application Submitted Applicant Confirmation with reference number
+and PDF copy
+Screening Complete —
+Eligible
+Applicant "Your application has passed initial
+screening and is under review"
+Screening Complete —
+Ineligible
+Applicant Ineligibility notification with reason(s)
+from screening report
+Clarification Requested Applicant Question(s) from Program Officer
+with response deadline
+Review Assigned Reviewer Link to review queue with application
+list
+Review Due Reminder (3
+days before SLA)
+Reviewer Reminder with overdue count
+Award Approved Applicant Award letter (reviewed by Officer
+before sending)
+Application Rejected Applicant Rejection letter with reason
+(reviewed by Officer)
+Agreement Sent Applicant Agreement PDF + acknowledgement
+link
+Tranche Released Applicant Disbursement confirmation with
+amount and date
+Report Due Reminder Applicant 30, 14, and 7 days before due date
+Report Overdue Applicant +
+Program Officer
+Overdue alert — every 3 days until
+submitted
+Report Approved Applicant "Report approved — next tranche will
+be released"
+7.2 In-App Communication Thread
+• Every application must have a Messages tab where all correspondence between the Program
+Officer and Applicant is threaded.
+• Program Officers must be able to initiate a message from within the application management
+view.
+• Applicants respond via the portal — responses appear in the thread and trigger an email
+notification to the Officer.
+• Internal Notes: Officers must be able to add notes visible only to staff — these are never sent to
+the applicant and are not shown in the applicant's portal.
+Module 8 Platform Administration
+Provides user management, audit logging, and an analytics dashboard for platform administrators.
+8.1 User Management
+• Platform Admins must be able to create staff accounts (Program Officer, Reviewer, Finance
+Officer).
+• Applicants self-register. Platform Admin can deactivate any applicant account.
+8.2 Audit Log
+• Every action on the platform must create an immutable log entry recording: actor, action
+performed, object affected, and timestamp.
+Good luck, and build something impactful.
+Argusoft Hackathon Series | Internal
